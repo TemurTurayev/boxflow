@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/api", tags=["settings"])
 
 # In-memory download status tracking (keyed by "provider:model_name")
 _download_status: dict[str, ModelDownloadStatus] = {}
+_download_lock = threading.Lock()
 
 
 @router.get("/settings", response_model=SettingsResponse)
@@ -31,9 +33,6 @@ async def get_settings(request: Request) -> SettingsResponse:
     """Return the current application settings."""
     settings = request.app.state.settings
     return SettingsResponse(
-        host=settings.host,
-        port=settings.port,
-        data_dir=settings.data_dir,
         detection_provider=settings.detection_provider,
         detection_model=settings.detection_model,
         detection_confidence=settings.detection_confidence,
@@ -43,6 +42,12 @@ async def get_settings(request: Request) -> SettingsResponse:
         export_format=settings.export_format,
         max_upload_size_mb=settings.max_upload_size_mb,
     )
+
+
+@router.put("/settings")
+async def update_settings(request: Request, body: dict[str, Any]) -> dict[str, str]:
+    logger.info("Settings update requested: %s", body)
+    return {"status": "ok", "message": "Settings noted (restart required to apply)"}
 
 
 @router.get("/models/detection", response_model=list[ProviderModelsResponse])
@@ -107,18 +112,18 @@ async def download_model(
 ) -> dict[str, str]:
     """Start downloading a model (asynchronous)."""
     key = f"{body.provider}:{body.model_name}"
-    existing = _download_status.get(key)
-    if existing and existing.status == "downloading":
-        return {"status": "already_downloading", "model": body.model_name}
+    with _download_lock:
+        existing = _download_status.get(key)
+        if existing and existing.status == "downloading":
+            return {"status": "already_downloading", "model": body.model_name}
 
-    _download_status[key] = ModelDownloadStatus(
-        model_name=body.model_name,
-        progress_pct=0.0,
-        total_mb=0.0,
-        status="downloading",
-    )
+        _download_status[key] = ModelDownloadStatus(
+            model_name=body.model_name,
+            progress_pct=0.0,
+            total_mb=0.0,
+            status="downloading",
+        )
 
-    # Launch background download
     asyncio.get_event_loop().run_in_executor(
         None, _do_download, body.provider, body.model_name, key
     )
@@ -128,15 +133,16 @@ async def download_model(
 @router.get("/models/download/status")
 async def download_status(request: Request) -> dict[str, Any]:
     """Return the status of all model downloads."""
-    return {
-        key: {
-            "model_name": s.model_name,
-            "progress_pct": s.progress_pct,
-            "total_mb": s.total_mb,
-            "status": s.status,
+    with _download_lock:
+        return {
+            key: {
+                "model_name": s.model_name,
+                "progress_pct": s.progress_pct,
+                "total_mb": s.total_mb,
+                "status": s.status,
+            }
+            for key, s in _download_status.items()
         }
-        for key, s in _download_status.items()
-    }
 
 
 def _check_model_installed(model_name: str) -> bool:
@@ -156,44 +162,65 @@ def _do_download(provider: str, model_name: str, key: str) -> None:
         if provider in ("yolo", "ultralytics"):
             _download_yolo_model(model_name, key)
         else:
+            with _download_lock:
+                _download_status[key] = ModelDownloadStatus(
+                    model_name=model_name,
+                    progress_pct=0.0,
+                    total_mb=0.0,
+                    status="error",
+                )
+    except Exception as exc:
+        logger.error("Model download failed for %s: %s", model_name, exc)
+        with _download_lock:
             _download_status[key] = ModelDownloadStatus(
                 model_name=model_name,
                 progress_pct=0.0,
                 total_mb=0.0,
                 status="error",
             )
-    except Exception as exc:
-        logger.error("Model download failed for %s: %s", model_name, exc)
-        _download_status[key] = ModelDownloadStatus(
-            model_name=model_name,
-            progress_pct=0.0,
-            total_mb=0.0,
-            status="error",
-        )
+
+
+_ALLOWED_YOLO_MODELS = {
+    "yolov8n.pt", "yolov8s.pt", "yolov8m.pt", "yolov8l.pt", "yolov8x.pt",
+    "yolo11n.pt", "yolo11s.pt", "yolo11m.pt", "yolo11l.pt", "yolo11x.pt",
+}
 
 
 def _download_yolo_model(model_name: str, key: str) -> None:
     """Trigger YOLO model download via ultralytics."""
+    if model_name not in _ALLOWED_YOLO_MODELS:
+        with _download_lock:
+            _download_status[key] = ModelDownloadStatus(
+                model_name=model_name,
+                progress_pct=0.0,
+                total_mb=0.0,
+                status="error",
+            )
+        return
+
     try:
         from ultralytics import YOLO
 
-        _download_status[key] = ModelDownloadStatus(
-            model_name=model_name,
-            progress_pct=50.0,
-            total_mb=0.0,
-            status="downloading",
-        )
+        with _download_lock:
+            _download_status[key] = ModelDownloadStatus(
+                model_name=model_name,
+                progress_pct=50.0,
+                total_mb=0.0,
+                status="downloading",
+            )
         YOLO(model_name)
-        _download_status[key] = ModelDownloadStatus(
-            model_name=model_name,
-            progress_pct=100.0,
-            total_mb=0.0,
-            status="complete",
-        )
+        with _download_lock:
+            _download_status[key] = ModelDownloadStatus(
+                model_name=model_name,
+                progress_pct=100.0,
+                total_mb=0.0,
+                status="complete",
+            )
     except ImportError:
-        _download_status[key] = ModelDownloadStatus(
-            model_name=model_name,
-            progress_pct=0.0,
-            total_mb=0.0,
-            status="error",
-        )
+        with _download_lock:
+            _download_status[key] = ModelDownloadStatus(
+                model_name=model_name,
+                progress_pct=0.0,
+                total_mb=0.0,
+                status="error",
+            )

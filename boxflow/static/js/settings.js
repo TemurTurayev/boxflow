@@ -146,30 +146,37 @@
     const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Detection Model'));
 
-    if (!Array.isArray(models) || models.length === 0) {
+    var allModels = [];
+    if (Array.isArray(models)) {
+      models.forEach(function (provider) {
+        if (provider.models) {
+          provider.models.forEach(function (m) { allModels.push(m); });
+        }
+      });
+    }
+
+    if (allModels.length === 0) {
       section.appendChild(el('p', 'dashboard-empty', 'No detection models available'));
       return section;
     }
 
     const list = el('div', 'model-list');
 
-    models.forEach(function (model) {
+    allModels.forEach(function (model) {
       const item = el('div', 'model-item');
       const isActive = settings.detection_model === model.name;
 
-      // Radio button
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'detection-model';
       radio.value = model.name;
       radio.checked = isActive;
-      radio.disabled = !model.downloaded;
+      radio.disabled = !model.installed;
       radio.addEventListener('change', function () {
         settings.detection_model = model.name;
       });
       item.appendChild(radio);
 
-      // Model info
       const info = el('div', 'model-item__info');
       info.appendChild(el('span', 'model-item__name', model.name));
       if (model.size_mb) {
@@ -177,8 +184,7 @@
       }
       item.appendChild(info);
 
-      // Status badge or download button
-      if (model.downloaded) {
+      if (model.installed) {
         item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
       } else {
         const dlBtn = document.createElement('button');
@@ -203,17 +209,25 @@
     const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Classification Model'));
 
+    var allModels = [];
+    if (Array.isArray(models)) {
+      models.forEach(function (provider) {
+        if (provider.models) {
+          provider.models.forEach(function (m) { allModels.push(m); });
+        }
+      });
+    }
+
     const list = el('div', 'model-list');
 
-    // "None" option for manual-only classification
     const noneItem = el('div', 'model-item');
     const noneRadio = document.createElement('input');
     noneRadio.type = 'radio';
     noneRadio.name = 'classification-model';
     noneRadio.value = 'none';
-    noneRadio.checked = !settings.classification_model || settings.classification_model === 'none';
+    noneRadio.checked = !settings.classifier_model || settings.classifier_model === 'none';
     noneRadio.addEventListener('change', function () {
-      settings.classification_model = 'none';
+      settings.classifier_model = 'none';
     });
     noneItem.appendChild(noneRadio);
     noneItem.appendChild(el('div', 'model-item__info', [
@@ -221,44 +235,42 @@
     ]));
     list.appendChild(noneItem);
 
-    if (Array.isArray(models)) {
-      models.forEach(function (model) {
-        const item = el('div', 'model-item');
-        const isActive = settings.classification_model === model.name;
+    allModels.forEach(function (model) {
+      const item = el('div', 'model-item');
+      const isActive = settings.classifier_model === model.name;
 
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'classification-model';
-        radio.value = model.name;
-        radio.checked = isActive;
-        radio.disabled = !model.downloaded;
-        radio.addEventListener('change', function () {
-          settings.classification_model = model.name;
-        });
-        item.appendChild(radio);
-
-        const info = el('div', 'model-item__info');
-        info.appendChild(el('span', 'model-item__name', model.name));
-        if (model.size_mb) {
-          info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
-        }
-        item.appendChild(info);
-
-        if (model.downloaded) {
-          item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
-        } else {
-          const dlBtn = document.createElement('button');
-          dlBtn.className = 'btn btn--sm btn--secondary';
-          dlBtn.textContent = 'Download';
-          dlBtn.addEventListener('click', function () {
-            downloadModel('classification', model.name, item);
-          });
-          item.appendChild(dlBtn);
-        }
-
-        list.appendChild(item);
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'classification-model';
+      radio.value = model.name;
+      radio.checked = isActive;
+      radio.disabled = !model.installed;
+      radio.addEventListener('change', function () {
+        settings.classifier_model = model.name;
       });
-    }
+      item.appendChild(radio);
+
+      const info = el('div', 'model-item__info');
+      info.appendChild(el('span', 'model-item__name', model.name));
+      if (model.size_mb) {
+        info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
+      }
+      item.appendChild(info);
+
+      if (model.installed) {
+        item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
+      } else {
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'btn btn--sm btn--secondary';
+        dlBtn.textContent = 'Download';
+        dlBtn.addEventListener('click', function () {
+          downloadModel('classification', model.name, item);
+        });
+        item.appendChild(dlBtn);
+      }
+
+      list.appendChild(item);
+    });
 
     section.appendChild(list);
     return section;
@@ -518,8 +530,10 @@
     }
 
     try {
-      const response = await fetch('/api/models/' + modelType + '/' + encodeURIComponent(modelName) + '/download', {
+      const response = await fetch('/api/models/download', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: modelType, model_name: modelName }),
       });
 
       if (!response.ok) {

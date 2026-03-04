@@ -61,9 +61,9 @@ class TestRegistry:
         assert result is None
 
     def test_get_detector_unknown(self) -> None:
-        with pytest.raises(RuntimeError, match="Cannot load"):
+        with pytest.raises(RuntimeError, match="Unknown detection provider"):
             get_detector("totally_unknown_provider")
 
     def test_get_classifier_unknown(self) -> None:
-        with pytest.raises(RuntimeError, match="Cannot load"):
+        with pytest.raises(RuntimeError, match="Unknown classifier provider"):
             get_classifier("totally_unknown_provider")

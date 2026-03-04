@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
-import tempfile
+import zipfile
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from boxflow.core.exporters import (
     COCOExporter,
@@ -14,7 +17,7 @@ from boxflow.core.exporters import (
     VOCExporter,
     YOLOExporter,
 )
-from boxflow.core.models import ExportRequest, ExportResponse
+from boxflow.core.models import ExportRequest
 from boxflow.core.service import LabelerService
 
 logger = logging.getLogger(__name__)
@@ -59,9 +62,8 @@ def _run_export(service: LabelerService, fmt: str) -> dict:
     raise ValueError(f"Unknown export format: {fmt}")
 
 
-@router.post("/export", response_model=ExportResponse)
-async def export_labels(request: Request, body: ExportRequest) -> ExportResponse:
-    """Export all labels in the specified format."""
+@router.post("/export")
+async def export_labels(request: Request, body: ExportRequest) -> StreamingResponse:
     service = _get_service(request)
     try:
         result = await asyncio.to_thread(_run_export, service, body.format)
@@ -70,4 +72,40 @@ async def export_labels(request: Request, body: ExportRequest) -> ExportResponse
     except Exception as exc:
         logger.error("Export failed: %s", exc)
         raise HTTPException(status_code=500, detail="Export failed")
-    return ExportResponse(**result)
+
+    file_path = Path(result["file_path"])
+    fmt = result["format"]
+
+    if fmt == "csv":
+        csv_file = file_path if file_path.suffix == ".csv" else file_path / "labels.csv"
+        if csv_file.exists():
+            content = csv_file.read_bytes()
+            return StreamingResponse(
+                io.BytesIO(content),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=labels.csv"},
+            )
+
+    if fmt == "coco":
+        json_file = file_path if file_path.suffix == ".json" else file_path / "annotations.json"
+        if json_file.exists():
+            content = json_file.read_bytes()
+            return StreamingResponse(
+                io.BytesIO(content),
+                media_type="application/json",
+                headers={"Content-Disposition": "attachment; filename=annotations.json"},
+            )
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in file_path.rglob("*"):
+            if f.is_file():
+                arcname = f.relative_to(file_path)
+                zf.write(f, arcname)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=labels-{fmt}.zip"},
+    )

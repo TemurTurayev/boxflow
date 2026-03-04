@@ -54,7 +54,19 @@ class YOLOExporter:
         output_path.mkdir(parents=True, exist_ok=True)
 
         records = _load_all_metadata(meta_dir)
-        classes = _build_class_list(records)
+
+        categories_file = meta_dir.parent / "categories.json"
+        if categories_file.exists():
+            try:
+                cat_map = json.loads(categories_file.read_text(encoding="utf-8"))
+                max_id = max(cat_map.values(), default=-1)
+                classes = [""] * (max_id + 1)
+                for name, idx in cat_map.items():
+                    classes[idx] = name
+            except (json.JSONDecodeError, ValueError):
+                classes = _build_class_list(records)
+        else:
+            classes = _build_class_list(records)
 
         # Write classes.txt
         classes_file = output_path / "classes.txt"
@@ -117,7 +129,7 @@ class COCOExporter:
 
         records = _load_all_metadata(meta_dir)
         classes = _build_class_list(records)
-        class_to_id = {name: idx for idx, name in enumerate(classes)}
+        class_to_id = {name: idx + 1 for idx, name in enumerate(classes)}
 
         coco = _build_coco_structure(records, images_dir, classes, class_to_id)
 
@@ -169,7 +181,7 @@ def _build_coco_structure(
             x1, y1, x2, y2 = bbox_xyxy
             coco_bbox = [x1, y1, x2 - x1, y2 - y1]
             area = (x2 - x1) * (y2 - y1)
-            cat_id = class_to_id.get(box.get("label", ""), 0)
+            cat_id = class_to_id.get(box.get("label", ""), 1)
             annotations = [
                 *annotations,
                 {

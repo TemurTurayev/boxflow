@@ -148,7 +148,6 @@ class ExportResponse(BaseModel):
     """Response after exporting labels."""
 
     format: str
-    file_path: str
     images_count: int
     labels_count: int
 
@@ -175,9 +174,6 @@ class StatsResponse(BaseModel):
 class SettingsResponse(BaseModel):
     """Current application settings."""
 
-    host: str
-    port: int
-    data_dir: str
     detection_provider: str
     detection_model: str
     detection_confidence: float

@@ -46,7 +46,12 @@ def get_detector(name: str, **kwargs: Any) -> DetectionProvider:
     *name* can be a builtin key like ``"yolo"`` or a fully-qualified dotted
     path like ``"mypackage.det:MyDetector"``.
     """
-    dotted = _BUILTIN_DETECTORS.get(name, name)
+    if name not in _BUILTIN_DETECTORS:
+        raise RuntimeError(
+            f"Unknown detection provider '{name}'. "
+            f"Available: {', '.join(_BUILTIN_DETECTORS.keys())}"
+        )
+    dotted = _BUILTIN_DETECTORS[name]
     try:
         cls = _import_class(dotted)
     except (ImportError, ValueError) as exc:
@@ -64,7 +69,12 @@ def get_classifier(name: str, **kwargs: Any) -> ClassifierProvider | None:
     if name.lower() == "none":
         return None
 
-    dotted = _BUILTIN_CLASSIFIERS.get(name, name)
+    if name not in _BUILTIN_CLASSIFIERS:
+        raise RuntimeError(
+            f"Unknown classifier provider '{name}'. "
+            f"Available: {', '.join(_BUILTIN_CLASSIFIERS.keys())}"
+        )
+    dotted = _BUILTIN_CLASSIFIERS[name]
     try:
         cls = _import_class(dotted)
     except (ImportError, ValueError) as exc:

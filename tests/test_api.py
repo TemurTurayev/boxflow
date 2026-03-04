@@ -112,7 +112,9 @@ class TestSettingsEndpoint:
         data = response.json()
         assert "detection_provider" in data
         assert "detection_model" in data
-        assert "port" in data
+        assert "port" not in data
+        assert "host" not in data
+        assert "data_dir" not in data
 
 
 class TestStatsEndpoint:

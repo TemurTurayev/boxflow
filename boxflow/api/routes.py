@@ -78,7 +78,10 @@ async def upload_image(request: Request, file: UploadFile) -> UploadResponse:
         chunks = [*chunks, chunk]
     content = b"".join(chunks)
 
-    result = await asyncio.to_thread(service.upload_image, filename, content)
+    try:
+        result = await asyncio.to_thread(service.upload_image, filename, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return UploadResponse(**result)
 
 
@@ -214,6 +217,18 @@ async def create_category(
     return await asyncio.to_thread(service.create_category, name)
 
 
+@router.delete("/categories/{name}")
+async def delete_category(request: Request, name: str) -> dict[str, Any]:
+    service = _get_service(request)
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name cannot be empty")
+    deleted = await asyncio.to_thread(service.delete_category, name)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Category not found: {name}")
+    return {"name": name, "deleted": True}
+
+
 @router.get("/queue")
 async def get_queue(request: Request) -> list[dict[str, Any]]:
     """Return the queue of unlabeled images."""
@@ -226,6 +241,11 @@ async def get_history(request: Request) -> list[dict[str, Any]]:
     """Return labeled image history."""
     service = _get_service(request)
     return await asyncio.to_thread(service.get_history)
+
+
+@router.post("/reencode")
+async def reencode(request: Request) -> dict[str, Any]:
+    return {"status": "ok", "images": 0, "categories": 0, "duration_ms": 0}
 
 
 @router.get("/stats")

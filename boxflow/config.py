@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     export_format: str = "yolo"
 
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = ["http://localhost:8001", "http://127.0.0.1:8001"]
     max_upload_size_mb: int = 50
 
     @property

@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import shutil
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +38,7 @@ class LabelerService:
         self._detector = detector
         self._classifier = classifier
         self._storage = storage
+        self._categories_lock = threading.Lock()
         self._storage.ensure_directories()
 
     @property
@@ -53,15 +55,23 @@ class LabelerService:
 
     def upload_image(self, filename: str, content: bytes) -> dict[str, Any]:
         """Save an uploaded image and return its metadata."""
+        import io as _io
+
         image_id = uuid.uuid4().hex[:12]
         suffix = Path(filename).suffix.lower() or ".jpg"
         if suffix not in _ALLOWED_IMAGE_SUFFIXES:
             suffix = ".jpg"
+
+        try:
+            with Image.open(_io.BytesIO(content)) as img:
+                img.verify()
+            with Image.open(_io.BytesIO(content)) as img:
+                width, height = img.size
+        except Exception:
+            raise ValueError("Uploaded file is not a valid image")
+
         dest = self._storage.uploads_dir / f"{image_id}{suffix}"
         dest.write_bytes(content)
-
-        with Image.open(dest) as img:
-            width, height = img.size
 
         return {
             "image_id": image_id,
@@ -177,19 +187,20 @@ class LabelerService:
         self, boxes_with_labels: list[dict[str, Any]]
     ) -> dict[str, int]:
         """Create a stable category -> class_id mapping."""
-        existing = self._load_categories_json()
-        all_labels = {box["label"] for box in boxes_with_labels}
+        with self._categories_lock:
+            existing = self._load_categories_json()
+            all_labels = {box["label"] for box in boxes_with_labels}
 
-        next_id = max(existing.values(), default=-1) + 1
-        result = dict(existing)
-        for label in sorted(all_labels):
-            if label not in result:
-                result[label] = next_id
-                next_id += 1
+            next_id = max(existing.values(), default=-1) + 1
+            result = dict(existing)
+            for label in sorted(all_labels):
+                if label not in result:
+                    result[label] = next_id
+                    next_id += 1
 
-        if result != existing:
-            self._save_categories_json(result)
-        return result
+            if result != existing:
+                self._save_categories_json(result)
+            return result
 
     def _load_categories_json(self) -> dict[str, int]:
         """Load the category mapping from disk."""
@@ -386,17 +397,28 @@ class LabelerService:
         if not self._storage._is_within(cat_dir, self._storage.crops_dir):
             raise ValueError(f"Category name escapes data tree: {name!r}")
 
-        cat_map = self._load_categories_json()
-        if name in cat_map:
-            return {"name": name, "count": 0, "icon_url": "", "created": False}
+        with self._categories_lock:
+            cat_map = self._load_categories_json()
+            if name in cat_map:
+                return {"name": name, "count": 0, "icon_url": "", "created": False}
 
-        next_id = max(cat_map.values(), default=-1) + 1
-        new_map = {**cat_map, name: next_id}
-        self._save_categories_json(new_map)
+            next_id = max(cat_map.values(), default=-1) + 1
+            new_map = {**cat_map, name: next_id}
+            self._save_categories_json(new_map)
 
         cat_dir.mkdir(parents=True, exist_ok=True)
 
         return {"name": name, "count": 0, "icon_url": "", "created": True}
+
+    def delete_category(self, name: str) -> bool:
+        self._validate_label_safe(name)
+        with self._categories_lock:
+            cat_map = self._load_categories_json()
+            if name not in cat_map:
+                return False
+            new_map = {k: v for k, v in cat_map.items() if k != name}
+            self._save_categories_json(new_map)
+        return True
 
     def get_history(self) -> list[dict[str, Any]]:
         """Return labeled images with summary info."""
@@ -408,14 +430,23 @@ class LabelerService:
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
-            cats = sorted({box["label"] for box in meta.get("boxes", [])})
+
+            boxes = meta.get("boxes", [])
+            category_summary: dict[str, int] = {}
+            for box in boxes:
+                label = box.get("label", "unknown")
+                category_summary[label] = category_summary.get(label, 0) + 1
+
             history = [
                 *history,
                 {
                     "image_id": meta.get("image_id", meta_file.stem),
+                    "source_file": meta.get("filename", ""),
                     "filename": meta.get("filename", ""),
-                    "labels_count": len(meta.get("boxes", [])),
-                    "categories": cats,
+                    "boxes_count": len(boxes),
+                    "labels_count": len(boxes),
+                    "categories": sorted(category_summary.keys()),
+                    "category_summary": category_summary,
                     "labeled_at": meta.get("labeled_at", ""),
                 },
             ]
@@ -436,9 +467,46 @@ class LabelerService:
                 continue
 
         categories = self.get_categories()
+
+        total_crops = sum(c["count"] for c in categories)
+
+        crops_per_category = {c["name"]: c["count"] for c in categories}
+
+        ref_dir = self._storage.reference_dir
+        total_refs = 0
+        refs_per_category: dict[str, int] = {}
+        if ref_dir.exists():
+            for d in ref_dir.iterdir():
+                if d.is_dir():
+                    count = len([f for f in d.iterdir() if f.is_file()])
+                    refs_per_category[d.name] = count
+                    total_refs += count
+
+        detection: dict[str, Any] = {}
+        try:
+            det_info = self._detector.info()
+            detection = {
+                "weight_file": self._settings.detection_model,
+                "input_size": self._settings.detection_imgsz,
+                "classes": len(det_info.models) if det_info.models else 0,
+            }
+        except Exception:
+            detection = {"weight_file": self._settings.detection_model}
+
+        classification = {
+            "ready": self._classifier is not None,
+            "model": self._settings.classifier_model if self._classifier else "none",
+        }
+
         return {
             "total_images": total_images,
             "labeled_images": labeled_count,
             "total_labels": total_labels,
+            "total_crops": total_crops,
+            "total_refs": total_refs,
             "categories": categories,
+            "crops_per_category": crops_per_category,
+            "refs_per_category": refs_per_category,
+            "detection": detection,
+            "classification": classification,
         }
