@@ -1,0 +1,552 @@
+/**
+ * BoxFlow — Settings Panel
+ *
+ * Manages application settings:
+ *   - Detection model selection and download
+ *   - Classification model selection
+ *   - Category management (add/remove)
+ *   - Export format preferences
+ *   - Save/load settings from backend
+ *
+ * API endpoints:
+ *   GET  /api/settings              - current settings
+ *   PUT  /api/settings              - update settings
+ *   GET  /api/models/detection      - available detection models
+ *   GET  /api/models/classification - available classification models
+ *   POST /api/export                - export labels
+ */
+(function () {
+  'use strict';
+
+  var panel = document.getElementById('panel-settings');
+  var btnOpen = document.getElementById('btn-settings');
+
+  if (!panel || !btnOpen) return;
+
+  var isOpen = false;
+
+  btnOpen.addEventListener('click', function () {
+    if (isOpen) {
+      closeSettings();
+    } else {
+      openSettings();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && isOpen) {
+      closeSettings();
+    }
+  });
+
+  /* -- Helpers -- */
+
+  function el(tag, cls, children) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (typeof children === 'string') node.textContent = children;
+    if (Array.isArray(children)) children.forEach(function (c) {
+      if (typeof c === 'string') {
+        node.appendChild(document.createTextNode(c));
+      } else if (c) {
+        node.appendChild(c);
+      }
+    });
+    return node;
+  }
+
+  function clearChildren(parentEl) {
+    while (parentEl.firstChild) {
+      parentEl.removeChild(parentEl.firstChild);
+    }
+  }
+
+  /* -- Open / Close -- */
+
+  function openSettings() {
+    isOpen = true;
+    panel.style.display = 'flex';
+    buildSettingsPanel();
+    loadAllData();
+  }
+
+  function closeSettings() {
+    isOpen = false;
+    panel.style.display = 'none';
+  }
+
+  function buildSettingsPanel() {
+    clearChildren(panel);
+
+    var inner = el('div', 'settings-panel__inner');
+
+    // Header
+    var header = el('div', 'dashboard-header');
+    header.appendChild(el('h2', 'dashboard-header__title', 'Settings'));
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'dashboard-header__close';
+    closeBtn.textContent = '\u00d7';
+    closeBtn.addEventListener('click', closeSettings);
+    header.appendChild(closeBtn);
+    inner.appendChild(header);
+
+    // Content area
+    var content = el('div', 'dashboard-content');
+    content.id = 'settings-content';
+    content.appendChild(el('div', 'dashboard-loading', 'Loading...'));
+    inner.appendChild(content);
+
+    panel.appendChild(inner);
+
+    // Click outside to close
+    panel.addEventListener('click', function (e) {
+      if (e.target === panel) closeSettings();
+    });
+  }
+
+  /* -- Data Loading -- */
+
+  async function loadAllData() {
+    var content = document.getElementById('settings-content');
+    if (!content) return;
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/settings').then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
+        fetch('/api/models/detection').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+        fetch('/api/models/classification').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+        fetch('/api/categories').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+      ]);
+
+      var settings = results[0];
+      var detectionModels = results[1];
+      var classificationModels = results[2];
+      var categories = results[3];
+
+      renderSettings(content, settings, detectionModels, classificationModels, categories);
+    } catch (err) {
+      content.textContent = '';
+      content.appendChild(el('div', 'dashboard-error', 'Failed to load settings: ' + err.message));
+    }
+  }
+
+  function renderSettings(content, settings, detectionModels, classificationModels, categories) {
+    clearChildren(content);
+
+    content.appendChild(buildDetectionSection(settings, detectionModels));
+    content.appendChild(buildClassificationSection(settings, classificationModels));
+    content.appendChild(buildCategorySection(categories));
+    content.appendChild(buildExportSection(settings));
+    content.appendChild(buildSaveSection(settings));
+  }
+
+  /* -- Detection Models Section -- */
+
+  function buildDetectionSection(settings, models) {
+    var section = el('div', 'dashboard-section');
+    section.appendChild(el('h3', 'dashboard-section__title', 'Detection Model'));
+
+    if (!Array.isArray(models) || models.length === 0) {
+      section.appendChild(el('p', 'dashboard-empty', 'No detection models available'));
+      return section;
+    }
+
+    var list = el('div', 'model-list');
+
+    models.forEach(function (model) {
+      var item = el('div', 'model-item');
+      var isActive = settings.detection_model === model.name;
+
+      // Radio button
+      var radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'detection-model';
+      radio.value = model.name;
+      radio.checked = isActive;
+      radio.disabled = !model.downloaded;
+      radio.addEventListener('change', function () {
+        settings.detection_model = model.name;
+      });
+      item.appendChild(radio);
+
+      // Model info
+      var info = el('div', 'model-item__info');
+      info.appendChild(el('span', 'model-item__name', model.name));
+      if (model.size_mb) {
+        info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
+      }
+      item.appendChild(info);
+
+      // Status badge or download button
+      if (model.downloaded) {
+        item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
+      } else {
+        var dlBtn = document.createElement('button');
+        dlBtn.className = 'btn btn--sm btn--secondary';
+        dlBtn.textContent = 'Download';
+        dlBtn.addEventListener('click', function () {
+          downloadModel('detection', model.name, item);
+        });
+        item.appendChild(dlBtn);
+      }
+
+      list.appendChild(item);
+    });
+
+    section.appendChild(list);
+    return section;
+  }
+
+  /* -- Classification Models Section -- */
+
+  function buildClassificationSection(settings, models) {
+    var section = el('div', 'dashboard-section');
+    section.appendChild(el('h3', 'dashboard-section__title', 'Classification Model'));
+
+    var list = el('div', 'model-list');
+
+    // "None" option for manual-only classification
+    var noneItem = el('div', 'model-item');
+    var noneRadio = document.createElement('input');
+    noneRadio.type = 'radio';
+    noneRadio.name = 'classification-model';
+    noneRadio.value = 'none';
+    noneRadio.checked = !settings.classification_model || settings.classification_model === 'none';
+    noneRadio.addEventListener('change', function () {
+      settings.classification_model = 'none';
+    });
+    noneItem.appendChild(noneRadio);
+    noneItem.appendChild(el('div', 'model-item__info', [
+      el('span', 'model-item__name', 'None (manual only)'),
+    ]));
+    list.appendChild(noneItem);
+
+    if (Array.isArray(models)) {
+      models.forEach(function (model) {
+        var item = el('div', 'model-item');
+        var isActive = settings.classification_model === model.name;
+
+        var radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'classification-model';
+        radio.value = model.name;
+        radio.checked = isActive;
+        radio.disabled = !model.downloaded;
+        radio.addEventListener('change', function () {
+          settings.classification_model = model.name;
+        });
+        item.appendChild(radio);
+
+        var info = el('div', 'model-item__info');
+        info.appendChild(el('span', 'model-item__name', model.name));
+        if (model.size_mb) {
+          info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
+        }
+        item.appendChild(info);
+
+        if (model.downloaded) {
+          item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
+        } else {
+          var dlBtn = document.createElement('button');
+          dlBtn.className = 'btn btn--sm btn--secondary';
+          dlBtn.textContent = 'Download';
+          dlBtn.addEventListener('click', function () {
+            downloadModel('classification', model.name, item);
+          });
+          item.appendChild(dlBtn);
+        }
+
+        list.appendChild(item);
+      });
+    }
+
+    section.appendChild(list);
+    return section;
+  }
+
+  /* -- Category Manager Section -- */
+
+  function buildCategorySection(categories) {
+    var section = el('div', 'dashboard-section');
+    section.appendChild(el('h3', 'dashboard-section__title', 'Categories'));
+
+    var manager = el('div', 'category-manager');
+
+    // Category list
+    var catList = el('div', 'category-manager__list');
+    catList.id = 'category-list';
+
+    if (Array.isArray(categories)) {
+      categories.forEach(function (cat) {
+        var catName = typeof cat === 'string' ? cat : cat.name;
+        catList.appendChild(buildCategoryItem(catName));
+      });
+    }
+
+    manager.appendChild(catList);
+
+    // Add category row
+    var addRow = el('div', 'category-manager__add');
+    var addInput = document.createElement('input');
+    addInput.type = 'text';
+    addInput.className = 'category-manager__input';
+    addInput.placeholder = 'New category name...';
+    addInput.maxLength = 50;
+    addRow.appendChild(addInput);
+
+    var addBtn = document.createElement('button');
+    addBtn.className = 'btn btn--sm btn--primary';
+    addBtn.textContent = 'Add';
+    addBtn.addEventListener('click', function () {
+      var name = addInput.value.trim();
+      if (name) {
+        addCategory(name, addInput);
+      }
+    });
+    addRow.appendChild(addBtn);
+
+    addInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var name = addInput.value.trim();
+        if (name) {
+          addCategory(name, addInput);
+        }
+      }
+    });
+
+    manager.appendChild(addRow);
+    section.appendChild(manager);
+    return section;
+  }
+
+  function buildCategoryItem(name) {
+    var item = el('div', 'category-manager__item');
+    item.appendChild(el('span', 'category-manager__name', name));
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'category-manager__remove';
+    removeBtn.textContent = '\u00d7';
+    removeBtn.title = 'Remove category';
+    removeBtn.addEventListener('click', function () {
+      removeCategory(name, item);
+    });
+    item.appendChild(removeBtn);
+
+    return item;
+  }
+
+  async function addCategory(name, inputEl) {
+    try {
+      var response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name }),
+      });
+
+      if (!response.ok) {
+        var errData = await response.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'HTTP ' + response.status);
+      }
+
+      var data = await response.json();
+      var catList = document.getElementById('category-list');
+      if (catList) {
+        catList.appendChild(buildCategoryItem(data.name));
+      }
+      inputEl.value = '';
+      window.showToast('Category "' + data.name + '" added', 'success');
+    } catch (err) {
+      window.showToast('Error adding category: ' + err.message, 'error');
+    }
+  }
+
+  async function removeCategory(name, itemEl) {
+    try {
+      var response = await fetch('/api/categories/' + encodeURIComponent(name), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        var errData = await response.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'HTTP ' + response.status);
+      }
+
+      if (itemEl && itemEl.parentNode) {
+        itemEl.parentNode.removeChild(itemEl);
+      }
+      window.showToast('Category "' + name + '" removed', 'success');
+    } catch (err) {
+      window.showToast('Error removing category: ' + err.message, 'error');
+    }
+  }
+
+  /* -- Export Section -- */
+
+  function buildExportSection(settings) {
+    var section = el('div', 'dashboard-section');
+    section.appendChild(el('h3', 'dashboard-section__title', 'Export Labels'));
+
+    var row = el('div', 'export-row');
+
+    var select = document.createElement('select');
+    select.id = 'settings-export-format';
+    select.className = 'export-select';
+
+    var formats = [
+      { value: 'yolo', label: 'YOLO (txt)' },
+      { value: 'coco', label: 'COCO JSON' },
+      { value: 'voc', label: 'Pascal VOC (xml)' },
+      { value: 'csv', label: 'CSV' },
+    ];
+
+    formats.forEach(function (fmt) {
+      var opt = document.createElement('option');
+      opt.value = fmt.value;
+      opt.textContent = fmt.label;
+      if (settings.export_format === fmt.value) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    row.appendChild(select);
+
+    var exportBtn = document.createElement('button');
+    exportBtn.className = 'btn btn--sm btn--primary';
+    exportBtn.textContent = 'Export';
+    exportBtn.addEventListener('click', function () {
+      triggerExport(select.value);
+    });
+    row.appendChild(exportBtn);
+
+    section.appendChild(row);
+    return section;
+  }
+
+  async function triggerExport(format) {
+    try {
+      var response = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: format }),
+      });
+
+      if (!response.ok) {
+        var errData = await response.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'Export failed');
+      }
+
+      var blob = await response.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+
+      var extensions = { yolo: 'zip', coco: 'json', voc: 'zip', csv: 'csv' };
+      a.download = 'labels.' + (extensions[format] || 'zip');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      window.showToast('Labels exported as ' + format.toUpperCase(), 'success');
+    } catch (err) {
+      window.showToast('Export error: ' + err.message, 'error');
+    }
+  }
+
+  /* -- Save Settings Section -- */
+
+  function buildSaveSection(settings) {
+    var section = el('div', 'dashboard-section');
+
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn--primary btn--block';
+    saveBtn.textContent = 'Save Settings';
+    saveBtn.addEventListener('click', function () {
+      saveSettings(settings);
+    });
+    section.appendChild(saveBtn);
+
+    return section;
+  }
+
+  async function saveSettings(settings) {
+    // Collect current selections from the form
+    var detRadio = document.querySelector('input[name="detection-model"]:checked');
+    var clsRadio = document.querySelector('input[name="classification-model"]:checked');
+    var formatSelect = document.getElementById('settings-export-format');
+
+    var payload = {
+      detection_model: detRadio ? detRadio.value : settings.detection_model,
+      classification_model: clsRadio ? clsRadio.value : settings.classification_model,
+      export_format: formatSelect ? formatSelect.value : settings.export_format,
+    };
+
+    try {
+      var response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        var errData = await response.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'HTTP ' + response.status);
+      }
+
+      window.showToast('Settings saved', 'success');
+    } catch (err) {
+      window.showToast('Error saving settings: ' + err.message, 'error');
+    }
+  }
+
+  /* -- Model Download -- */
+
+  async function downloadModel(modelType, modelName, itemEl) {
+    // Show progress bar
+    var progressWrap = el('div', 'progress-bar-download');
+    var progressFill = el('div', 'progress-bar-download__fill');
+    progressWrap.appendChild(progressFill);
+    itemEl.appendChild(progressWrap);
+
+    // Disable the download button
+    var dlBtn = itemEl.querySelector('.btn');
+    if (dlBtn) {
+      dlBtn.disabled = true;
+      dlBtn.textContent = 'Downloading...';
+    }
+
+    try {
+      var response = await fetch('/api/models/' + modelType + '/' + encodeURIComponent(modelName) + '/download', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        var errData = await response.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'Download failed');
+      }
+
+      // Simulate progress (real progress would require SSE/WebSocket)
+      progressFill.style.width = '100%';
+
+      window.showToast('Model "' + modelName + '" downloaded', 'success');
+
+      // Refresh settings panel
+      setTimeout(function () {
+        loadAllData();
+      }, 500);
+    } catch (err) {
+      window.showToast('Download error: ' + err.message, 'error');
+
+      if (dlBtn) {
+        dlBtn.disabled = false;
+        dlBtn.textContent = 'Download';
+      }
+      if (progressWrap.parentNode) {
+        progressWrap.parentNode.removeChild(progressWrap);
+      }
+    }
+  }
+
+})();

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoxFlow</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=1">
+</head>
+<body>
+  <!-- ===== Top Bar ===== -->
+  <header class="top-bar">
+    <div class="top-bar__logo">
+      <svg class="top-bar__icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+        <line x1="15" y1="3" x2="15" y2="21"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="3" y1="15" x2="21" y2="15"/>
+      </svg>
+      <span class="top-bar__title">BoxFlow</span>
+    </div>
+
+    <!-- Progress Bar -->
+    <nav id="progress-bar" class="progress-bar">
+      <button id="step-1" class="progress-bar__step progress-bar__step--active" data-step="upload">
+        <span class="progress-bar__number">1</span>
+        <span class="progress-bar__label">Upload</span>
+      </button>
+      <span class="progress-bar__arrow">&rarr;</span>
+      <button id="step-2" class="progress-bar__step" data-step="bbox">
+        <span class="progress-bar__number">2</span>
+        <span class="progress-bar__label">BBox</span>
+      </button>
+      <span class="progress-bar__arrow">&rarr;</span>
+      <button id="step-3" class="progress-bar__step" data-step="classify">
+        <span class="progress-bar__number">3</span>
+        <span class="progress-bar__label">Classify</span>
+      </button>
+    </nav>
+
+    <div class="top-bar__spacer"></div>
+    <button id="btn-settings" class="top-bar__settings-btn" title="Settings">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button id="btn-dashboard" class="top-bar__dashboard-btn" title="Dashboard">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="4" rx="1"/>
+        <rect x="14" y="10" width="7" height="11" rx="1"/>
+        <rect x="3" y="13" width="7" height="8" rx="1"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- ===== Main Content ===== -->
+  <main class="main-content">
+
+    <!-- Step 1: Upload -->
+    <section id="step-upload" class="step step--active">
+      <div class="upload-layout">
+        <!-- Drop Zone -->
+        <div class="upload-layout__center">
+          <div id="drop-zone" class="drop-zone">
+            <svg class="drop-zone__icon" viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p class="drop-zone__title">Drop images here</p>
+            <p class="drop-zone__subtitle">or click to browse</p>
+            <input id="file-input" type="file" accept="image/*" multiple hidden>
+            <button class="drop-zone__btn">
+              Browse Files
+            </button>
+          </div>
+        </div>
+
+        <!-- Queue Sidebar -->
+        <aside class="upload-layout__sidebar">
+          <div class="sidebar-panel">
+            <h2 class="sidebar-panel__heading">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              Image Queue
+            </h2>
+            <ul id="queue-list" class="queue-list">
+              <!-- JS will populate queue items here -->
+              <li class="queue-list__empty">No images in queue</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Step 2: BBox Editor -->
+    <section id="step-bbox" class="step">
+      <div class="bbox-layout">
+        <!-- Toolbar -->
+        <div id="bbox-toolbar" class="bbox-toolbar">
+          <button class="bbox-toolbar__btn bbox-toolbar__btn--active" data-tool="draw" title="Draw (N)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2"/>
+            </svg>
+            <span>Draw</span>
+          </button>
+          <button class="bbox-toolbar__btn" data-tool="select" title="Select (S)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 3l14 9-7 2-4 7z"/>
+            </svg>
+            <span>Select</span>
+          </button>
+          <button class="bbox-toolbar__btn" data-tool="delete" title="Delete (Del)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/>
+              <path d="M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            <span>Delete</span>
+          </button>
+          <div class="bbox-toolbar__separator"></div>
+          <button class="bbox-toolbar__btn" data-tool="zoom-in" title="Zoom In (+)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="11" y1="8" x2="11" y2="14"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+            <span>Zoom In</span>
+          </button>
+          <button class="bbox-toolbar__btn" data-tool="zoom-out" title="Zoom Out (-)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+            <span>Zoom Out</span>
+          </button>
+          <button class="bbox-toolbar__btn" data-tool="fit" title="Fit (F)">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+              <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+              <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+              <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+            </svg>
+            <span>Fit</span>
+          </button>
+          <div class="bbox-toolbar__separator"></div>
+          <span class="bbox-toolbar__hints">
+            N: draw &middot; S: select &middot; D/Del: delete &middot; F: fit &middot; RMB/Space: pan
+          </span>
+          <div class="bbox-toolbar__spacer"></div>
+          <button id="btn-bbox-next" class="bbox-toolbar__btn bbox-toolbar__btn--next" disabled>
+            <span>Next: Classify</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="bbox-layout__canvas-wrap">
+          <canvas id="bbox-canvas" class="bbox-canvas"></canvas>
+        </div>
+
+        <!-- BBox List Sidebar -->
+        <aside class="bbox-layout__sidebar">
+          <div class="sidebar-panel">
+            <h2 class="sidebar-panel__heading">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              Boxes <span id="bbox-count" class="badge">0</span>
+            </h2>
+            <ul id="bbox-list" class="bbox-list">
+              <!-- JS will populate bbox items here -->
+              <li class="bbox-list__empty">Draw a box on the image</li>
+            </ul>
+            <div class="sidebar-panel__footer">
+              <button id="btn-bbox-done" class="btn btn--primary btn--block" disabled>
+                Next: Classify
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Step 3: Classification -->
+    <section id="step-classify" class="step">
+      <div class="classify-layout">
+        <!-- Crop Display -->
+        <div class="classify-layout__center">
+          <div class="crop-panel">
+            <div class="crop-panel__header">
+              <h2 class="crop-panel__title">Classify Object</h2>
+              <span id="crop-counter" class="crop-panel__counter">0 / 0</span>
+            </div>
+            <div id="crop-display" class="crop-display">
+              <div class="crop-display__placeholder">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <p>Create bounding boxes in Step 2 first</p>
+              </div>
+              <!-- JS will insert <img> or <canvas> for the current crop -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Grid Sidebar -->
+        <aside class="classify-layout__sidebar">
+          <div class="sidebar-panel">
+            <h2 class="sidebar-panel__heading">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+              Select Category
+            </h2>
+            <div id="brand-grid" class="brand-grid">
+              <!-- Categories loaded dynamically from /api/categories -->
+            </div>
+
+            <div class="sidebar-panel__footer">
+              <button id="btn-save-labels" class="btn btn--primary btn--block" disabled>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save Labels
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== Dashboard Panel (overlay) ===== -->
+  <div id="panel-dashboard" class="dashboard-panel" style="display:none">
+    <div class="dashboard-panel__inner">
+      <div class="dashboard-header">
+        <h2 class="dashboard-header__title">Dashboard</h2>
+        <button id="btn-dashboard-close" class="dashboard-header__close">&times;</button>
+      </div>
+      <div id="dashboard-content" class="dashboard-content">
+        <div class="dashboard-loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Settings Panel (overlay) ===== -->
+  <div id="panel-settings" class="settings-panel" style="display:none">
+    <!-- Settings content will be populated by settings.js -->
+  </div>
+
+  <!-- ===== Toast Container ===== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ===== Scripts ===== -->
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/bbox-editor.js"></script>
+  <script src="/static/js/classifier.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/settings.js"></script>
+</body>
+</html>
