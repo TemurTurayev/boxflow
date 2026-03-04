@@ -18,12 +18,12 @@
 (function () {
   'use strict';
 
-  var panel = document.getElementById('panel-settings');
-  var btnOpen = document.getElementById('btn-settings');
+  const panel = document.getElementById('panel-settings');
+  const btnOpen = document.getElementById('btn-settings');
 
   if (!panel || !btnOpen) return;
 
-  var isOpen = false;
+  let isOpen = false;
 
   btnOpen.addEventListener('click', function () {
     if (isOpen) {
@@ -42,7 +42,7 @@
   /* -- Helpers -- */
 
   function el(tag, cls, children) {
-    var node = document.createElement(tag);
+    const node = document.createElement(tag);
     if (cls) node.className = cls;
     if (typeof children === 'string') node.textContent = children;
     if (Array.isArray(children)) children.forEach(function (c) {
@@ -78,12 +78,12 @@
   function buildSettingsPanel() {
     clearChildren(panel);
 
-    var inner = el('div', 'settings-panel__inner');
+    const inner = el('div', 'settings-panel__inner');
 
     // Header
-    var header = el('div', 'dashboard-header');
+    const header = el('div', 'dashboard-header');
     header.appendChild(el('h2', 'dashboard-header__title', 'Settings'));
-    var closeBtn = document.createElement('button');
+    const closeBtn = document.createElement('button');
     closeBtn.className = 'dashboard-header__close';
     closeBtn.textContent = '\u00d7';
     closeBtn.addEventListener('click', closeSettings);
@@ -91,7 +91,7 @@
     inner.appendChild(header);
 
     // Content area
-    var content = el('div', 'dashboard-content');
+    const content = el('div', 'dashboard-content');
     content.id = 'settings-content';
     content.appendChild(el('div', 'dashboard-loading', 'Loading...'));
     inner.appendChild(content);
@@ -107,21 +107,21 @@
   /* -- Data Loading -- */
 
   async function loadAllData() {
-    var content = document.getElementById('settings-content');
+    const content = document.getElementById('settings-content');
     if (!content) return;
 
     try {
-      var results = await Promise.all([
+      const results = await Promise.all([
         fetch('/api/settings').then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
         fetch('/api/models/detection').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
         fetch('/api/models/classification').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
         fetch('/api/categories').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
       ]);
 
-      var settings = results[0];
-      var detectionModels = results[1];
-      var classificationModels = results[2];
-      var categories = results[3];
+      const settings = results[0];
+      const detectionModels = results[1];
+      const classificationModels = results[2];
+      const categories = results[3];
 
       renderSettings(content, settings, detectionModels, classificationModels, categories);
     } catch (err) {
@@ -143,7 +143,7 @@
   /* -- Detection Models Section -- */
 
   function buildDetectionSection(settings, models) {
-    var section = el('div', 'dashboard-section');
+    const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Detection Model'));
 
     if (!Array.isArray(models) || models.length === 0) {
@@ -151,14 +151,14 @@
       return section;
     }
 
-    var list = el('div', 'model-list');
+    const list = el('div', 'model-list');
 
     models.forEach(function (model) {
-      var item = el('div', 'model-item');
-      var isActive = settings.detection_model === model.name;
+      const item = el('div', 'model-item');
+      const isActive = settings.detection_model === model.name;
 
       // Radio button
-      var radio = document.createElement('input');
+      const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'detection-model';
       radio.value = model.name;
@@ -170,7 +170,7 @@
       item.appendChild(radio);
 
       // Model info
-      var info = el('div', 'model-item__info');
+      const info = el('div', 'model-item__info');
       info.appendChild(el('span', 'model-item__name', model.name));
       if (model.size_mb) {
         info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
@@ -181,7 +181,7 @@
       if (model.downloaded) {
         item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
       } else {
-        var dlBtn = document.createElement('button');
+        const dlBtn = document.createElement('button');
         dlBtn.className = 'btn btn--sm btn--secondary';
         dlBtn.textContent = 'Download';
         dlBtn.addEventListener('click', function () {
@@ -200,14 +200,14 @@
   /* -- Classification Models Section -- */
 
   function buildClassificationSection(settings, models) {
-    var section = el('div', 'dashboard-section');
+    const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Classification Model'));
 
-    var list = el('div', 'model-list');
+    const list = el('div', 'model-list');
 
     // "None" option for manual-only classification
-    var noneItem = el('div', 'model-item');
-    var noneRadio = document.createElement('input');
+    const noneItem = el('div', 'model-item');
+    const noneRadio = document.createElement('input');
     noneRadio.type = 'radio';
     noneRadio.name = 'classification-model';
     noneRadio.value = 'none';
@@ -223,10 +223,10 @@
 
     if (Array.isArray(models)) {
       models.forEach(function (model) {
-        var item = el('div', 'model-item');
-        var isActive = settings.classification_model === model.name;
+        const item = el('div', 'model-item');
+        const isActive = settings.classification_model === model.name;
 
-        var radio = document.createElement('input');
+        const radio = document.createElement('input');
         radio.type = 'radio';
         radio.name = 'classification-model';
         radio.value = model.name;
@@ -237,7 +237,7 @@
         });
         item.appendChild(radio);
 
-        var info = el('div', 'model-item__info');
+        const info = el('div', 'model-item__info');
         info.appendChild(el('span', 'model-item__name', model.name));
         if (model.size_mb) {
           info.appendChild(el('span', 'model-item__size', model.size_mb + ' MB'));
@@ -247,7 +247,7 @@
         if (model.downloaded) {
           item.appendChild(el('span', 'model-item__badge model-item__badge--ready', 'Downloaded'));
         } else {
-          var dlBtn = document.createElement('button');
+          const dlBtn = document.createElement('button');
           dlBtn.className = 'btn btn--sm btn--secondary';
           dlBtn.textContent = 'Download';
           dlBtn.addEventListener('click', function () {
@@ -267,18 +267,18 @@
   /* -- Category Manager Section -- */
 
   function buildCategorySection(categories) {
-    var section = el('div', 'dashboard-section');
+    const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Categories'));
 
-    var manager = el('div', 'category-manager');
+    const manager = el('div', 'category-manager');
 
     // Category list
-    var catList = el('div', 'category-manager__list');
+    const catList = el('div', 'category-manager__list');
     catList.id = 'category-list';
 
     if (Array.isArray(categories)) {
       categories.forEach(function (cat) {
-        var catName = typeof cat === 'string' ? cat : cat.name;
+        const catName = typeof cat === 'string' ? cat : cat.name;
         catList.appendChild(buildCategoryItem(catName));
       });
     }
@@ -286,19 +286,19 @@
     manager.appendChild(catList);
 
     // Add category row
-    var addRow = el('div', 'category-manager__add');
-    var addInput = document.createElement('input');
+    const addRow = el('div', 'category-manager__add');
+    const addInput = document.createElement('input');
     addInput.type = 'text';
     addInput.className = 'category-manager__input';
     addInput.placeholder = 'New category name...';
     addInput.maxLength = 50;
     addRow.appendChild(addInput);
 
-    var addBtn = document.createElement('button');
+    const addBtn = document.createElement('button');
     addBtn.className = 'btn btn--sm btn--primary';
     addBtn.textContent = 'Add';
     addBtn.addEventListener('click', function () {
-      var name = addInput.value.trim();
+      const name = addInput.value.trim();
       if (name) {
         addCategory(name, addInput);
       }
@@ -308,7 +308,7 @@
     addInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        var name = addInput.value.trim();
+        const name = addInput.value.trim();
         if (name) {
           addCategory(name, addInput);
         }
@@ -321,10 +321,10 @@
   }
 
   function buildCategoryItem(name) {
-    var item = el('div', 'category-manager__item');
+    const item = el('div', 'category-manager__item');
     item.appendChild(el('span', 'category-manager__name', name));
 
-    var removeBtn = document.createElement('button');
+    const removeBtn = document.createElement('button');
     removeBtn.className = 'category-manager__remove';
     removeBtn.textContent = '\u00d7';
     removeBtn.title = 'Remove category';
@@ -338,19 +338,19 @@
 
   async function addCategory(name, inputEl) {
     try {
-      var response = await fetch('/api/categories', {
+      const response = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name }),
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'HTTP ' + response.status);
       }
 
-      var data = await response.json();
-      var catList = document.getElementById('category-list');
+      const data = await response.json();
+      const catList = document.getElementById('category-list');
       if (catList) {
         catList.appendChild(buildCategoryItem(data.name));
       }
@@ -363,12 +363,12 @@
 
   async function removeCategory(name, itemEl) {
     try {
-      var response = await fetch('/api/categories/' + encodeURIComponent(name), {
+      const response = await fetch('/api/categories/' + encodeURIComponent(name), {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'HTTP ' + response.status);
       }
 
@@ -384,16 +384,16 @@
   /* -- Export Section -- */
 
   function buildExportSection(settings) {
-    var section = el('div', 'dashboard-section');
+    const section = el('div', 'dashboard-section');
     section.appendChild(el('h3', 'dashboard-section__title', 'Export Labels'));
 
-    var row = el('div', 'export-row');
+    const row = el('div', 'export-row');
 
-    var select = document.createElement('select');
+    const select = document.createElement('select');
     select.id = 'settings-export-format';
     select.className = 'export-select';
 
-    var formats = [
+    const formats = [
       { value: 'yolo', label: 'YOLO (txt)' },
       { value: 'coco', label: 'COCO JSON' },
       { value: 'voc', label: 'Pascal VOC (xml)' },
@@ -401,7 +401,7 @@
     ];
 
     formats.forEach(function (fmt) {
-      var opt = document.createElement('option');
+      const opt = document.createElement('option');
       opt.value = fmt.value;
       opt.textContent = fmt.label;
       if (settings.export_format === fmt.value) {
@@ -412,7 +412,7 @@
 
     row.appendChild(select);
 
-    var exportBtn = document.createElement('button');
+    const exportBtn = document.createElement('button');
     exportBtn.className = 'btn btn--sm btn--primary';
     exportBtn.textContent = 'Export';
     exportBtn.addEventListener('click', function () {
@@ -426,23 +426,23 @@
 
   async function triggerExport(format) {
     try {
-      var response = await fetch('/api/export', {
+      const response = await fetch('/api/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format: format }),
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'Export failed');
       }
 
-      var blob = await response.blob();
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
       a.href = url;
 
-      var extensions = { yolo: 'zip', coco: 'json', voc: 'zip', csv: 'csv' };
+      const extensions = { yolo: 'zip', coco: 'json', voc: 'zip', csv: 'csv' };
       a.download = 'labels.' + (extensions[format] || 'zip');
       document.body.appendChild(a);
       a.click();
@@ -458,9 +458,9 @@
   /* -- Save Settings Section -- */
 
   function buildSaveSection(settings) {
-    var section = el('div', 'dashboard-section');
+    const section = el('div', 'dashboard-section');
 
-    var saveBtn = document.createElement('button');
+    const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn--primary btn--block';
     saveBtn.textContent = 'Save Settings';
     saveBtn.addEventListener('click', function () {
@@ -473,25 +473,25 @@
 
   async function saveSettings(settings) {
     // Collect current selections from the form
-    var detRadio = document.querySelector('input[name="detection-model"]:checked');
-    var clsRadio = document.querySelector('input[name="classification-model"]:checked');
-    var formatSelect = document.getElementById('settings-export-format');
+    const detRadio = document.querySelector('input[name="detection-model"]:checked');
+    const clsRadio = document.querySelector('input[name="classification-model"]:checked');
+    const formatSelect = document.getElementById('settings-export-format');
 
-    var payload = {
+    const payload = {
       detection_model: detRadio ? detRadio.value : settings.detection_model,
       classification_model: clsRadio ? clsRadio.value : settings.classification_model,
       export_format: formatSelect ? formatSelect.value : settings.export_format,
     };
 
     try {
-      var response = await fetch('/api/settings', {
+      const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'HTTP ' + response.status);
       }
 
@@ -505,25 +505,25 @@
 
   async function downloadModel(modelType, modelName, itemEl) {
     // Show progress bar
-    var progressWrap = el('div', 'progress-bar-download');
-    var progressFill = el('div', 'progress-bar-download__fill');
+    const progressWrap = el('div', 'progress-bar-download');
+    const progressFill = el('div', 'progress-bar-download__fill');
     progressWrap.appendChild(progressFill);
     itemEl.appendChild(progressWrap);
 
     // Disable the download button
-    var dlBtn = itemEl.querySelector('.btn');
+    const dlBtn = itemEl.querySelector('.btn');
     if (dlBtn) {
       dlBtn.disabled = true;
       dlBtn.textContent = 'Downloading...';
     }
 
     try {
-      var response = await fetch('/api/models/' + modelType + '/' + encodeURIComponent(modelName) + '/download', {
+      const response = await fetch('/api/models/' + modelType + '/' + encodeURIComponent(modelName) + '/download', {
         method: 'POST',
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'Download failed');
       }
 

@@ -13,19 +13,19 @@
    State
    ================================================================ */
 
-var STEPS = ['upload', 'bbox', 'classify'];
+const STEPS = ['upload', 'bbox', 'classify'];
 
-var currentStep = 'upload';
-var currentImageId = null;
-var detections = [];
-var imageWidth = 0;
-var imageHeight = 0;
+let currentStep = 'upload';
+let currentImageId = null;
+let detections = [];
+let imageWidth = 0;
+let imageHeight = 0;
 
 /* ================================================================
    DOM references (cached once on DOMContentLoaded)
    ================================================================ */
 
-var dom = {};
+let dom = {};
 
 function cacheDom() {
   dom = {
@@ -59,7 +59,7 @@ function cacheDom() {
    ================================================================ */
 
 function escapeHtml(str) {
-  var div = document.createElement('div');
+  const div = document.createElement('div');
   div.appendChild(document.createTextNode(str));
   return div.innerHTML;
 }
@@ -69,7 +69,7 @@ function escapeHtml(str) {
  * Only used with hardcoded icon markup defined in this file.
  */
 function createSvgIcon(svgMarkup) {
-  var wrapper = document.createElement('span');
+  const wrapper = document.createElement('span');
   wrapper.innerHTML = svgMarkup; // eslint-disable-line -- trusted hardcoded SVG only
   return wrapper.firstElementChild;
 }
@@ -87,7 +87,7 @@ function clearChildren(el) {
    SVG Icon Templates (hardcoded, safe)
    ================================================================ */
 
-var SVG_UPLOAD_ICON =
+const SVG_UPLOAD_ICON =
   '<svg class="drop-zone__icon" viewBox="0 0 24 24" width="64" height="64" ' +
     'fill="none" stroke="currentColor" stroke-width="1.5">' +
     '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
@@ -95,21 +95,21 @@ var SVG_UPLOAD_ICON =
     '<line x1="12" y1="3" x2="12" y2="15"/>' +
   '</svg>';
 
-var SVG_CLOSE =
+const SVG_CLOSE =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
     'stroke="currentColor" stroke-width="2">' +
     '<line x1="18" y1="6" x2="6" y2="18"/>' +
     '<line x1="6" y1="6" x2="18" y2="18"/>' +
   '</svg>';
 
-var SVG_CLOSE_16 =
+const SVG_CLOSE_16 =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
     'stroke="currentColor" stroke-width="2">' +
     '<line x1="18" y1="6" x2="6" y2="18"/>' +
     '<line x1="6" y1="6" x2="18" y2="18"/>' +
   '</svg>';
 
-var TOAST_ICONS = {
+const TOAST_ICONS = {
   success:
     '<svg class="toast__icon" viewBox="0 0 24 24" width="20" height="20" ' +
       'fill="none" stroke="currentColor" stroke-width="2">' +
@@ -149,12 +149,12 @@ function goToStep(step) {
     return;
   }
 
-  var nextIndex = STEPS.indexOf(step);
+  const nextIndex = STEPS.indexOf(step);
   currentStep = step;
 
   // Update step containers: only the active one is visible
   STEPS.forEach(function (s) {
-    var container = dom.stepContainers[s];
+    const container = dom.stepContainers[s];
     if (!container) {
       return;
     }
@@ -167,7 +167,7 @@ function goToStep(step) {
 
   // Update progress bar buttons
   STEPS.forEach(function (s, idx) {
-    var btn = dom.stepButtons[s];
+    const btn = dom.stepButtons[s];
     if (!btn) {
       return;
     }
@@ -189,7 +189,7 @@ function goToStep(step) {
 }
 
 function initBboxStep() {
-  var imageUrl = '/api/images/' + encodeURIComponent(currentImageId);
+  const imageUrl = '/api/images/' + encodeURIComponent(currentImageId);
 
   // bboxEditor is defined in bbox-editor.js (loaded after app.js)
   if (typeof bboxEditor !== 'undefined' && bboxEditor.init) {
@@ -201,7 +201,7 @@ function initBboxStep() {
 }
 
 function initClassifyStep() {
-  var boxes = [];
+  let boxes = [];
 
   // Prefer the latest boxes from bboxEditor if available
   if (typeof bboxEditor !== 'undefined' && bboxEditor.getBoxes) {
@@ -220,7 +220,7 @@ function initClassifyStep() {
    BBox Sidebar Update
    ================================================================ */
 
-var BBOX_COLORS = [
+const BBOX_COLORS = [
   '#e94560', '#2ecc71', '#3498db', '#f39c12', '#9b59b6',
   '#1abc9c', '#e67e22', '#e74c3c', '#7eb8f7', '#f1c40f',
 ];
@@ -230,11 +230,11 @@ function updateBboxSidebar(boxes) {
     return;
   }
 
-  var validBoxes = Array.isArray(boxes) ? boxes : [];
+  const validBoxes = Array.isArray(boxes) ? boxes : [];
   dom.bboxCount.textContent = String(validBoxes.length);
 
   // Enable/disable the "Done" and toolbar "Next" buttons
-  var hasBoxes = validBoxes.length > 0;
+  const hasBoxes = validBoxes.length > 0;
   if (dom.btnBboxDone) {
     dom.btnBboxDone.disabled = !hasBoxes;
   }
@@ -246,7 +246,7 @@ function updateBboxSidebar(boxes) {
 
   // Empty state
   if (validBoxes.length === 0) {
-    var emptyLi = document.createElement('li');
+    const emptyLi = document.createElement('li');
     emptyLi.className = 'bbox-list__empty';
     emptyLi.textContent = 'Draw a box on the image';
     dom.bboxList.appendChild(emptyLi);
@@ -254,32 +254,32 @@ function updateBboxSidebar(boxes) {
   }
 
   validBoxes.forEach(function (box, idx) {
-    var color = BBOX_COLORS[idx % BBOX_COLORS.length];
-    var bbox = box.bbox || [];
-    var coordText = bbox.map(function (v) { return Math.round(v); }).join(', ');
+    const color = BBOX_COLORS[idx % BBOX_COLORS.length];
+    const bbox = box.bbox || [];
+    const coordText = bbox.map(function (v) { return Math.round(v); }).join(', ');
 
-    var li = document.createElement('li');
+    const li = document.createElement('li');
     li.className = 'bbox-list__item';
     li.setAttribute('data-index', String(idx));
 
-    var colorSpan = document.createElement('span');
+    const colorSpan = document.createElement('span');
     colorSpan.className = 'bbox-list__color';
     colorSpan.style.background = color;
     li.appendChild(colorSpan);
 
-    var coordsSpan = document.createElement('span');
+    const coordsSpan = document.createElement('span');
     coordsSpan.className = 'bbox-list__coords';
     coordsSpan.textContent = '[' + coordText + ']';
     li.appendChild(coordsSpan);
 
     if (typeof box.confidence === 'number') {
-      var badge = document.createElement('span');
+      const badge = document.createElement('span');
       badge.className = 'badge';
       badge.textContent = (box.confidence * 100).toFixed(0) + '%';
       li.appendChild(badge);
     }
 
-    var removeBtn = document.createElement('button');
+    const removeBtn = document.createElement('button');
     removeBtn.className = 'bbox-list__remove';
     removeBtn.title = 'Delete';
     removeBtn.appendChild(createSvgIcon(SVG_CLOSE));
@@ -307,8 +307,8 @@ function updateBboxSidebar(boxes) {
    ================================================================ */
 
 function initUpload() {
-  var dropZone = dom.dropZone;
-  var fileInput = dom.fileInput;
+  const dropZone = dom.dropZone;
+  const fileInput = dom.fileInput;
 
   if (!dropZone || !fileInput) {
     return;
@@ -324,7 +324,7 @@ function initUpload() {
   });
 
   // "Browse Files" button within the drop zone
-  var selectBtn = dropZone.querySelector('.drop-zone__btn');
+  const selectBtn = dropZone.querySelector('.drop-zone__btn');
   if (selectBtn) {
     selectBtn.addEventListener('click', function () {
       fileInput.click();
@@ -355,7 +355,7 @@ function initUpload() {
     e.stopPropagation();
     dropZone.classList.remove('drop-zone--dragover');
 
-    var files = e.dataTransfer ? e.dataTransfer.files : null;
+    const files = e.dataTransfer ? e.dataTransfer.files : null;
     if (files && files.length > 0) {
       handleFiles(files);
     }
@@ -372,8 +372,8 @@ function initUpload() {
 
 function handleFiles(fileList) {
   // Upload only the first image file
-  for (var i = 0; i < fileList.length; i++) {
-    var file = fileList[i];
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
     if (file.type && file.type.startsWith('image/')) {
       uploadFile(file);
       return;
@@ -384,23 +384,23 @@ function handleFiles(fileList) {
 }
 
 async function uploadFile(file) {
-  var formData = new FormData();
+  const formData = new FormData();
   formData.append('file', file);
 
   showToast('Uploading ' + file.name + '...', 'info');
 
   try {
-    var response = await fetch('/api/upload', {
+    const response = await fetch('/api/upload', {
       method: 'POST',
       body: formData,
     });
 
     if (!response.ok) {
-      var errData = await response.json().catch(function () { return {}; });
+      const errData = await response.json().catch(function () { return {}; });
       throw new Error(errData.detail || 'HTTP ' + response.status);
     }
 
-    var data = await response.json();
+    const data = await response.json();
     currentImageId = data.image_id;
     detections = [];
     imageWidth = 0;
@@ -419,34 +419,34 @@ async function uploadFile(file) {
  * All DOM construction uses safe methods (createElement / textContent).
  */
 function showPreview(imageId, filename) {
-  var dropZone = dom.dropZone;
+  const dropZone = dom.dropZone;
   if (!dropZone) {
     return;
   }
 
   clearChildren(dropZone);
 
-  var imageUrl = '/api/images/' + encodeURIComponent(imageId);
-  var displayName = filename || imageId;
+  const imageUrl = '/api/images/' + encodeURIComponent(imageId);
+  const displayName = filename || imageId;
 
   // Preview image
-  var img = document.createElement('img');
+  const img = document.createElement('img');
   img.src = imageUrl;
   img.alt = displayName;
   img.style.cssText = 'max-width:100%;max-height:280px;border-radius:8px;object-fit:contain;';
   dropZone.appendChild(img);
 
   // Filename label
-  var title = document.createElement('p');
+  const title = document.createElement('p');
   title.className = 'drop-zone__title';
   title.textContent = displayName;
   dropZone.appendChild(title);
 
   // Button row
-  var btnRow = document.createElement('div');
+  const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
 
-  var btnDetect = document.createElement('button');
+  const btnDetect = document.createElement('button');
   btnDetect.className = 'btn btn--primary';
   btnDetect.id = 'btn-detect';
   btnDetect.textContent = 'Detect Objects';
@@ -455,7 +455,7 @@ function showPreview(imageId, filename) {
   });
   btnRow.appendChild(btnDetect);
 
-  var btnNew = document.createElement('button');
+  const btnNew = document.createElement('button');
   btnNew.className = 'btn btn--secondary';
   btnNew.id = 'btn-new-photo';
   btnNew.textContent = 'New Image';
@@ -477,7 +477,7 @@ function resetUpload() {
   imageWidth = 0;
   imageHeight = 0;
 
-  var dropZone = dom.dropZone;
+  const dropZone = dom.dropZone;
   if (!dropZone) {
     return;
   }
@@ -488,19 +488,19 @@ function resetUpload() {
   dropZone.appendChild(createSvgIcon(SVG_UPLOAD_ICON));
 
   // Title text
-  var title = document.createElement('p');
+  const title = document.createElement('p');
   title.className = 'drop-zone__title';
   title.textContent = 'Drop images here';
   dropZone.appendChild(title);
 
   // Subtitle
-  var subtitle = document.createElement('p');
+  const subtitle = document.createElement('p');
   subtitle.className = 'drop-zone__subtitle';
   subtitle.textContent = 'or click to browse';
   dropZone.appendChild(subtitle);
 
   // Hidden file input
-  var newInput = document.createElement('input');
+  const newInput = document.createElement('input');
   newInput.id = 'file-input';
   newInput.type = 'file';
   newInput.accept = 'image/*';
@@ -509,7 +509,7 @@ function resetUpload() {
   dropZone.appendChild(newInput);
 
   // Browse files button
-  var selectBtn = document.createElement('button');
+  const selectBtn = document.createElement('button');
   selectBtn.className = 'drop-zone__btn';
   selectBtn.textContent = 'Browse Files';
   selectBtn.addEventListener('click', function () {
@@ -532,7 +532,7 @@ async function runDetection() {
     return;
   }
 
-  var btnDetect = document.getElementById('btn-detect');
+  const btnDetect = document.getElementById('btn-detect');
   if (btnDetect) {
     btnDetect.disabled = true;
     btnDetect.textContent = 'Detecting...';
@@ -543,16 +543,16 @@ async function runDetection() {
   showToast('Running detection...', 'info');
 
   try {
-    var response = await fetch('/api/detect/' + encodeURIComponent(currentImageId), {
+    const response = await fetch('/api/detect/' + encodeURIComponent(currentImageId), {
       method: 'POST',
     });
 
     if (!response.ok) {
-      var errData = await response.json().catch(function () { return {}; });
+      const errData = await response.json().catch(function () { return {}; });
       throw new Error(errData.detail || 'HTTP ' + response.status);
     }
 
-    var data = await response.json();
+    const data = await response.json();
     detections = data.boxes || [];
     imageWidth = data.width || 0;
     imageHeight = data.height || 0;
@@ -577,19 +577,19 @@ async function runDetection() {
 
 async function loadQueue() {
   try {
-    var response = await fetch('/api/queue');
+    const response = await fetch('/api/queue');
 
     if (!response.ok) {
       throw new Error('HTTP ' + response.status);
     }
 
-    var items = await response.json();
+    const items = await response.json();
     renderQueue(items);
   } catch (_err) {
     // Queue loading failure is non-critical
     if (dom.queueList) {
       clearChildren(dom.queueList);
-      var errLi = document.createElement('li');
+      const errLi = document.createElement('li');
       errLi.className = 'queue-list__empty';
       errLi.textContent = 'Failed to load queue';
       dom.queueList.appendChild(errLi);
@@ -605,7 +605,7 @@ function renderQueue(items) {
   clearChildren(dom.queueList);
 
   if (!items || items.length === 0) {
-    var emptyLi = document.createElement('li');
+    const emptyLi = document.createElement('li');
     emptyLi.className = 'queue-list__empty';
     emptyLi.textContent = 'No images in queue';
     dom.queueList.appendChild(emptyLi);
@@ -613,35 +613,35 @@ function renderQueue(items) {
   }
 
   items.forEach(function (item) {
-    var isActive = item.image_id === currentImageId;
+    const isActive = item.image_id === currentImageId;
 
-    var li = document.createElement('li');
+    const li = document.createElement('li');
     li.className = 'queue-list__item' + (isActive ? ' queue-list__item--active' : '');
     li.setAttribute('data-image-id', item.image_id);
 
-    var thumb = document.createElement('img');
+    const thumb = document.createElement('img');
     thumb.className = 'queue-list__thumb';
     thumb.src = item.thumbnail_url;
     thumb.alt = item.filename;
     thumb.loading = 'lazy';
     li.appendChild(thumb);
 
-    var infoDiv = document.createElement('div');
+    const infoDiv = document.createElement('div');
     infoDiv.className = 'queue-list__info';
 
-    var nameDiv = document.createElement('div');
+    const nameDiv = document.createElement('div');
     nameDiv.className = 'queue-list__name';
     nameDiv.textContent = item.filename;
     infoDiv.appendChild(nameDiv);
 
-    var metaDiv = document.createElement('div');
+    const metaDiv = document.createElement('div');
     metaDiv.className = 'queue-list__meta';
     metaDiv.textContent = item.image_id.slice(0, 8);
     infoDiv.appendChild(metaDiv);
 
     li.appendChild(infoDiv);
 
-    var statusSpan = document.createElement('span');
+    const statusSpan = document.createElement('span');
     statusSpan.className = 'queue-list__status' + (isActive ? ' queue-list__status--active' : '');
     li.appendChild(statusSpan);
 
@@ -663,7 +663,7 @@ function selectFromQueue(imageId, liElement) {
   // Highlight the selected queue item
   dom.queueList.querySelectorAll('.queue-list__item').forEach(function (item) {
     item.classList.remove('queue-list__item--active');
-    var dot = item.querySelector('.queue-list__status');
+    const dot = item.querySelector('.queue-list__status');
     if (dot) {
       dot.classList.remove('queue-list__status--active');
     }
@@ -671,15 +671,15 @@ function selectFromQueue(imageId, liElement) {
 
   if (liElement) {
     liElement.classList.add('queue-list__item--active');
-    var statusDot = liElement.querySelector('.queue-list__status');
+    const statusDot = liElement.querySelector('.queue-list__status');
     if (statusDot) {
       statusDot.classList.add('queue-list__status--active');
     }
   }
 
   // Resolve filename from the queue item
-  var nameEl = liElement ? liElement.querySelector('.queue-list__name') : null;
-  var filename = nameEl ? nameEl.textContent : imageId;
+  const nameEl = liElement ? liElement.querySelector('.queue-list__name') : null;
+  const filename = nameEl ? nameEl.textContent : imageId;
 
   showPreview(imageId, filename);
   goToStep('upload');
@@ -709,15 +709,15 @@ function initBboxDoneButton() {
 
 function initProgressNavigation() {
   STEPS.forEach(function (step) {
-    var btn = dom.stepButtons[step];
+    const btn = dom.stepButtons[step];
     if (!btn) {
       return;
     }
 
     btn.addEventListener('click', function () {
       // Only allow backward navigation (to completed steps) or to current step
-      var targetIdx = STEPS.indexOf(step);
-      var currentIdx = STEPS.indexOf(currentStep);
+      const targetIdx = STEPS.indexOf(step);
+      const currentIdx = STEPS.indexOf(currentStep);
 
       if (targetIdx <= currentIdx) {
         goToStep(step);
@@ -749,29 +749,29 @@ function onLabelingDone() {
    ================================================================ */
 
 function showToast(message, type) {
-  var toastType = type || 'info';
-  var container = dom.toastContainer;
+  const toastType = type || 'info';
+  const container = dom.toastContainer;
 
   if (!container) {
     return;
   }
 
-  var iconMarkup = TOAST_ICONS[toastType] || TOAST_ICONS.info;
+  const iconMarkup = TOAST_ICONS[toastType] || TOAST_ICONS.info;
 
-  var toastEl = document.createElement('div');
+  const toastEl = document.createElement('div');
   toastEl.className = 'toast toast--' + toastType;
 
   // Icon (from trusted hardcoded SVG)
   toastEl.appendChild(createSvgIcon(iconMarkup));
 
   // Message (safe textContent)
-  var msgSpan = document.createElement('span');
+  const msgSpan = document.createElement('span');
   msgSpan.className = 'toast__message';
   msgSpan.textContent = message;
   toastEl.appendChild(msgSpan);
 
   // Close button
-  var closeBtn = document.createElement('button');
+  const closeBtn = document.createElement('button');
   closeBtn.className = 'toast__close';
   closeBtn.title = 'Close';
   closeBtn.appendChild(createSvgIcon(SVG_CLOSE_16));
@@ -807,7 +807,7 @@ function dismissToast(toastEl) {
    ================================================================ */
 
 function showLoadingOverlay(visible) {
-  var existing = document.getElementById('loading-overlay');
+  const existing = document.getElementById('loading-overlay');
 
   if (!visible) {
     if (existing) {
@@ -825,15 +825,15 @@ function showLoadingOverlay(visible) {
     return;
   }
 
-  var overlay = document.createElement('div');
+  const overlay = document.createElement('div');
   overlay.id = 'loading-overlay';
   overlay.className = 'loading-overlay';
 
-  var spinner = document.createElement('div');
+  const spinner = document.createElement('div');
   spinner.className = 'loading-overlay__spinner';
   overlay.appendChild(spinner);
 
-  var label = document.createElement('span');
+  const label = document.createElement('span');
   label.className = 'loading-overlay__label';
   label.textContent = 'Detecting objects...';
   overlay.appendChild(label);

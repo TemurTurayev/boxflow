@@ -15,31 +15,29 @@
  * Exports global: bboxEditor
  */
 
-/* eslint-disable no-var */
-
-var bboxEditor = (function () {
+const bboxEditor = (function () {
 
   /* ================================================================
      Constants
      ================================================================ */
 
-  var HANDLE_RADIUS = 8;         // px in canvas space for hit detection
-  var HANDLE_DRAW_SIZE = 5;      // px half-size for rendering handles
-  var MIN_BOX_SIZE = 20;         // minimum box dimension in image space
-  var SCALE_MIN = 0.1;
-  var SCALE_MAX = 10.0;
-  var ZOOM_FACTOR = 1.15;        // per wheel tick
+  const HANDLE_RADIUS = 8;         // px in canvas space for hit detection
+  const HANDLE_DRAW_SIZE = 5;      // px half-size for rendering handles
+  const MIN_BOX_SIZE = 20;         // minimum box dimension in image space
+  const SCALE_MIN = 0.1;
+  const SCALE_MAX = 10.0;
+  const ZOOM_FACTOR = 1.15;        // per wheel tick
 
-  var COLOR_UNSELECTED_FILL = 'rgba(15, 52, 96, 0.30)';
-  var COLOR_UNSELECTED_STROKE = '#0f3460';
-  var COLOR_SELECTED_FILL = 'rgba(233, 69, 96, 0.30)';
-  var COLOR_SELECTED_STROKE = '#e94560';
-  var COLOR_HANDLE_FILL = '#e94560';
-  var COLOR_HANDLE_STROKE = '#ffffff';
-  var COLOR_DRAW_PREVIEW = 'rgba(126, 184, 247, 0.35)';
-  var COLOR_DRAW_STROKE = '#7eb8f7';
-  var COLOR_LABEL_BG = 'rgba(15, 52, 96, 0.85)';
-  var COLOR_LABEL_TEXT = '#e0e0e0';
+  const COLOR_UNSELECTED_FILL = 'rgba(15, 52, 96, 0.30)';
+  const COLOR_UNSELECTED_STROKE = '#0f3460';
+  const COLOR_SELECTED_FILL = 'rgba(233, 69, 96, 0.30)';
+  const COLOR_SELECTED_STROKE = '#e94560';
+  const COLOR_HANDLE_FILL = '#e94560';
+  const COLOR_HANDLE_STROKE = '#ffffff';
+  const COLOR_DRAW_PREVIEW = 'rgba(126, 184, 247, 0.35)';
+  const COLOR_DRAW_STROKE = '#7eb8f7';
+  const COLOR_LABEL_BG = 'rgba(15, 52, 96, 0.85)';
+  const COLOR_LABEL_TEXT = '#e0e0e0';
 
   /* ================================================================
      Handle layout
@@ -47,7 +45,7 @@ var bboxEditor = (function () {
 
   // Handle identifiers: corners + edge midpoints
   // Each returns {x, y} in image coords given a box
-  var HANDLE_DEFS = [
+  const HANDLE_DEFS = [
     { id: 'nw', cursor: 'nw-resize', pos: function (b) { return { x: b.x1, y: b.y1 }; } },
     { id: 'ne', cursor: 'ne-resize', pos: function (b) { return { x: b.x2, y: b.y1 }; } },
     { id: 'sw', cursor: 'sw-resize', pos: function (b) { return { x: b.x1, y: b.y2 }; } },
@@ -62,48 +60,48 @@ var bboxEditor = (function () {
      State
      ================================================================ */
 
-  var canvas = null;
-  var ctx = null;
-  var image = null;            // HTMLImageElement (loaded)
-  var imgNaturalW = 0;         // original image width
-  var imgNaturalH = 0;         // original image height
-  var boxes = [];              // [{x1, y1, x2, y2, confidence, selected}]
-  var scale = 1;
-  var offsetX = 0;
-  var offsetY = 0;
-  var mode = 'select';         // 'select' | 'draw' | 'resize' | 'move'
-  var selectedIdx = -1;
-  var dragHandle = null;       // handle def currently being dragged
-  var drawStart = null;        // {imgX, imgY} start point for new bbox
-  var drawCurrent = null;      // {imgX, imgY} current mouse in draw mode
+  let canvas = null;
+  let ctx = null;
+  let image = null;            // HTMLImageElement (loaded)
+  let imgNaturalW = 0;         // original image width
+  let imgNaturalH = 0;         // original image height
+  let boxes = [];              // [{x1, y1, x2, y2, confidence, selected}]
+  let scale = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+  let mode = 'select';         // 'select' | 'draw' | 'resize' | 'move'
+  let selectedIdx = -1;
+  let dragHandle = null;       // handle def currently being dragged
+  let drawStart = null;        // {imgX, imgY} start point for new bbox
+  let drawCurrent = null;      // {imgX, imgY} current mouse in draw mode
 
   // Drag state for move/resize
-  var dragStartImgX = 0;
-  var dragStartImgY = 0;
-  var dragBoxSnapshot = null;  // snapshot of box at drag start
+  let dragStartImgX = 0;
+  let dragStartImgY = 0;
+  let dragBoxSnapshot = null;  // snapshot of box at drag start
 
   // Pan state (middle-click or space+drag)
-  var isPanning = false;
-  var panStartCanvasX = 0;
-  var panStartCanvasY = 0;
-  var panStartOffsetX = 0;
-  var panStartOffsetY = 0;
-  var spaceHeld = false;
+  let isPanning = false;
+  let panStartCanvasX = 0;
+  let panStartCanvasY = 0;
+  let panStartOffsetX = 0;
+  let panStartOffsetY = 0;
+  let spaceHeld = false;
 
   // ResizeObserver reference for cleanup
-  var resizeObserver = null;
+  let resizeObserver = null;
 
   // Callback set by app.js
-  var onBoxesChangedCb = null;
+  let onBoxesChangedCb = null;
 
   // Bound event handler references for cleanup
-  var boundOnMouseDown = null;
-  var boundOnMouseMove = null;
-  var boundOnMouseUp = null;
-  var boundOnWheel = null;
-  var boundOnKeyDown = null;
-  var boundOnKeyUp = null;
-  var boundOnContextMenu = null;
+  let boundOnMouseDown = null;
+  let boundOnMouseMove = null;
+  let boundOnMouseUp = null;
+  let boundOnWheel = null;
+  let boundOnKeyDown = null;
+  let boundOnKeyUp = null;
+  let boundOnContextMenu = null;
 
   /* ================================================================
      Coordinate conversion
@@ -132,9 +130,9 @@ var bboxEditor = (function () {
       return;
     }
 
-    var parent = canvas.parentElement;
-    var rect = parent.getBoundingClientRect();
-    var dpr = window.devicePixelRatio || 1;
+    const parent = canvas.parentElement;
+    const rect = parent.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
 
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
@@ -151,16 +149,16 @@ var bboxEditor = (function () {
       return;
     }
 
-    var parent = canvas.parentElement;
+    const parent = canvas.parentElement;
     if (!parent) {
       return;
     }
 
-    var canvasW = parent.getBoundingClientRect().width;
-    var canvasH = parent.getBoundingClientRect().height;
+    const canvasW = parent.getBoundingClientRect().width;
+    const canvasH = parent.getBoundingClientRect().height;
 
-    var scaleX = canvasW / imgNaturalW;
-    var scaleY = canvasH / imgNaturalH;
+    const scaleX = canvasW / imgNaturalW;
+    const scaleY = canvasH / imgNaturalH;
     scale = Math.min(scaleX, scaleY) * 0.95; // 5% padding
 
     offsetX = (canvasW - imgNaturalW * scale) / 2;
@@ -176,13 +174,13 @@ var bboxEditor = (function () {
       return;
     }
 
-    var parent = canvas.parentElement;
+    const parent = canvas.parentElement;
     if (!parent) {
       return;
     }
 
-    var canvasW = parent.getBoundingClientRect().width;
-    var canvasH = parent.getBoundingClientRect().height;
+    const canvasW = parent.getBoundingClientRect().width;
+    const canvasH = parent.getBoundingClientRect().height;
 
     // Clear
     ctx.clearRect(0, 0, canvasW, canvasH);
@@ -216,10 +214,10 @@ var bboxEditor = (function () {
   }
 
   function drawBox(box, idx, isSelected) {
-    var tl = imgToCanvas(box.x1, box.y1);
-    var br = imgToCanvas(box.x2, box.y2);
-    var w = br.x - tl.x;
-    var h = br.y - tl.y;
+    const tl = imgToCanvas(box.x1, box.y1);
+    const br = imgToCanvas(box.x2, box.y2);
+    const w = br.x - tl.x;
+    const h = br.y - tl.y;
 
     // Fill
     ctx.fillStyle = isSelected ? COLOR_SELECTED_FILL : COLOR_UNSELECTED_FILL;
@@ -231,18 +229,18 @@ var bboxEditor = (function () {
     ctx.strokeRect(tl.x, tl.y, w, h);
 
     // Index label (1-based)
-    var label = String(idx + 1);
-    var confText = '';
+    const label = String(idx + 1);
+    let confText = '';
     if (typeof box.confidence === 'number') {
       confText = ' ' + (box.confidence * 100).toFixed(0) + '%';
     }
 
     ctx.font = '600 12px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-    var labelMetrics = ctx.measureText(label + confText);
-    var labelPadX = 5;
-    var labelPadY = 3;
-    var labelH = 16;
-    var labelW = labelMetrics.width + labelPadX * 2;
+    const labelMetrics = ctx.measureText(label + confText);
+    const labelPadX = 5;
+    const labelPadY = 3;
+    const labelH = 16;
+    const labelW = labelMetrics.width + labelPadX * 2;
 
     // Label background
     ctx.fillStyle = COLOR_LABEL_BG;
@@ -261,8 +259,8 @@ var bboxEditor = (function () {
 
   function drawHandles(box) {
     HANDLE_DEFS.forEach(function (hd) {
-      var imgPos = hd.pos(box);
-      var cPos = imgToCanvas(imgPos.x, imgPos.y);
+      const imgPos = hd.pos(box);
+      const cPos = imgToCanvas(imgPos.x, imgPos.y);
 
       ctx.fillStyle = COLOR_HANDLE_FILL;
       ctx.strokeStyle = COLOR_HANDLE_STROKE;
@@ -281,11 +279,11 @@ var bboxEditor = (function () {
   }
 
   function drawPreviewBox(start, current) {
-    var tl = imgToCanvas(
+    const tl = imgToCanvas(
       Math.min(start.imgX, current.imgX),
       Math.min(start.imgY, current.imgY)
     );
-    var br = imgToCanvas(
+    const br = imgToCanvas(
       Math.max(start.imgX, current.imgX),
       Math.max(start.imgY, current.imgY)
     );
@@ -305,7 +303,7 @@ var bboxEditor = (function () {
      ================================================================ */
 
   function getCanvasCoords(e) {
-    var rect = canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
@@ -321,14 +319,14 @@ var bboxEditor = (function () {
       return null;
     }
 
-    var box = boxes[selectedIdx];
+    const box = boxes[selectedIdx];
 
-    for (var i = 0; i < HANDLE_DEFS.length; i++) {
-      var hd = HANDLE_DEFS[i];
-      var imgPos = hd.pos(box);
-      var cPos = imgToCanvas(imgPos.x, imgPos.y);
-      var dx = cx - cPos.x;
-      var dy = cy - cPos.y;
+    for (let i = 0; i < HANDLE_DEFS.length; i++) {
+      const hd = HANDLE_DEFS[i];
+      const imgPos = hd.pos(box);
+      const cPos = imgToCanvas(imgPos.x, imgPos.y);
+      const dx = cx - cPos.x;
+      const dy = cy - cPos.y;
 
       if (Math.abs(dx) <= HANDLE_RADIUS && Math.abs(dy) <= HANDLE_RADIUS) {
         return hd;
@@ -343,13 +341,13 @@ var bboxEditor = (function () {
    * Returns the index of the topmost (last) matching box, or -1.
    */
   function hitTestBox(cx, cy) {
-    var imgCoords = canvasToImg(cx, cy);
-    var ix = imgCoords.x;
-    var iy = imgCoords.y;
+    const imgCoords = canvasToImg(cx, cy);
+    const ix = imgCoords.x;
+    const iy = imgCoords.y;
 
     // Search backwards so we hit the topmost box first
-    for (var i = boxes.length - 1; i >= 0; i--) {
-      var b = boxes[i];
+    for (let i = boxes.length - 1; i >= 0; i--) {
+      const b = boxes[i];
       if (ix >= b.x1 && ix <= b.x2 && iy >= b.y1 && iy <= b.y2) {
         return i;
       }
@@ -367,9 +365,9 @@ var bboxEditor = (function () {
       return;
     }
 
-    var coords = getCanvasCoords(e);
-    var cx = coords.x;
-    var cy = coords.y;
+    const coords = getCanvasCoords(e);
+    const cx = coords.x;
+    const cy = coords.y;
 
     // Middle mouse button, right-click, or space+left click: pan
     if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) {
@@ -388,7 +386,7 @@ var bboxEditor = (function () {
       return;
     }
 
-    var imgCoords = canvasToImg(cx, cy);
+    const imgCoords = canvasToImg(cx, cy);
 
     // If in draw mode, start drawing a new box
     if (mode === 'draw') {
@@ -398,7 +396,7 @@ var bboxEditor = (function () {
     }
 
     // Check handle hit on currently selected box
-    var handle = hitTestHandle(cx, cy);
+    const handle = hitTestHandle(cx, cy);
     if (handle) {
       mode = 'resize';
       dragHandle = handle;
@@ -409,7 +407,7 @@ var bboxEditor = (function () {
     }
 
     // Check if clicking inside a box
-    var hitIdx = hitTestBox(cx, cy);
+    const hitIdx = hitTestBox(cx, cy);
     if (hitIdx >= 0) {
       selectBox(hitIdx);
       mode = 'move';
@@ -429,9 +427,9 @@ var bboxEditor = (function () {
       return;
     }
 
-    var coords = getCanvasCoords(e);
-    var cx = coords.x;
-    var cy = coords.y;
+    const coords = getCanvasCoords(e);
+    const cx = coords.x;
+    const cy = coords.y;
 
     // Pan
     if (isPanning) {
@@ -441,7 +439,7 @@ var bboxEditor = (function () {
       return;
     }
 
-    var imgCoords = canvasToImg(cx, cy);
+    const imgCoords = canvasToImg(cx, cy);
 
     // Drawing new box
     if (mode === 'draw' && drawStart) {
@@ -452,8 +450,8 @@ var bboxEditor = (function () {
 
     // Resizing
     if (mode === 'resize' && dragHandle && dragBoxSnapshot && selectedIdx >= 0) {
-      var dx = imgCoords.x - dragStartImgX;
-      var dy = imgCoords.y - dragStartImgY;
+      const dx = imgCoords.x - dragStartImgX;
+      const dy = imgCoords.y - dragStartImgY;
       applyResize(dx, dy);
       render();
       return;
@@ -461,8 +459,8 @@ var bboxEditor = (function () {
 
     // Moving
     if (mode === 'move' && dragBoxSnapshot && selectedIdx >= 0) {
-      var moveDx = imgCoords.x - dragStartImgX;
-      var moveDy = imgCoords.y - dragStartImgY;
+      const moveDx = imgCoords.x - dragStartImgX;
+      const moveDy = imgCoords.y - dragStartImgY;
       applyMove(moveDx, moveDy);
       render();
       return;
@@ -486,10 +484,10 @@ var bboxEditor = (function () {
 
     // End draw
     if (mode === 'draw' && drawStart && drawCurrent) {
-      var x1 = Math.min(drawStart.imgX, drawCurrent.imgX);
-      var y1 = Math.min(drawStart.imgY, drawCurrent.imgY);
-      var x2 = Math.max(drawStart.imgX, drawCurrent.imgX);
-      var y2 = Math.max(drawStart.imgY, drawCurrent.imgY);
+      let x1 = Math.min(drawStart.imgX, drawCurrent.imgX);
+      let y1 = Math.min(drawStart.imgY, drawCurrent.imgY);
+      let x2 = Math.max(drawStart.imgX, drawCurrent.imgX);
+      let y2 = Math.max(drawStart.imgY, drawCurrent.imgY);
 
       // Clamp to image bounds
       x1 = Math.max(0, x1);
@@ -497,8 +495,8 @@ var bboxEditor = (function () {
       x2 = Math.min(imgNaturalW, x2);
       y2 = Math.min(imgNaturalH, y2);
 
-      var boxW = x2 - x1;
-      var boxH = y2 - y1;
+      const boxW = x2 - x1;
+      const boxH = y2 - y1;
 
       if (boxW >= MIN_BOX_SIZE && boxH >= MIN_BOX_SIZE) {
         addBox(x1, y1, x2, y2);
@@ -523,7 +521,7 @@ var bboxEditor = (function () {
       mode = 'select';
       render();
 
-      var coords = getCanvasCoords(e);
+      const coords = getCanvasCoords(e);
       updateCursor(coords.x, coords.y);
       return;
     }
@@ -536,14 +534,14 @@ var bboxEditor = (function () {
 
     e.preventDefault();
 
-    var coords = getCanvasCoords(e);
-    var cx = coords.x;
-    var cy = coords.y;
+    const coords = getCanvasCoords(e);
+    const cx = coords.x;
+    const cy = coords.y;
 
     // Determine zoom direction
-    var zoomIn = e.deltaY < 0;
-    var factor = zoomIn ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-    var newScale = scale * factor;
+    const zoomIn = e.deltaY < 0;
+    const factor = zoomIn ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+    let newScale = scale * factor;
 
     // Clamp scale
     newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, newScale));
@@ -554,7 +552,7 @@ var bboxEditor = (function () {
 
     // Zoom centered on cursor position
     // The image point under the cursor should remain under the cursor
-    var imgPoint = canvasToImg(cx, cy);
+    const imgPoint = canvasToImg(cx, cy);
     scale = newScale;
     offsetX = cx - imgPoint.x * scale;
     offsetY = cy - imgPoint.y * scale;
@@ -568,7 +566,7 @@ var bboxEditor = (function () {
       return;
     }
 
-    var key = e.key;
+    const key = e.key;
 
     if (key === ' ') {
       e.preventDefault();
@@ -613,7 +611,7 @@ var bboxEditor = (function () {
     if (key === 'ArrowLeft') {
       e.preventDefault();
       if (boxes.length > 0) {
-        var prev = selectedIdx <= 0 ? boxes.length - 1 : selectedIdx - 1;
+        const prev = selectedIdx <= 0 ? boxes.length - 1 : selectedIdx - 1;
         selectBox(prev);
       }
       return;
@@ -622,7 +620,7 @@ var bboxEditor = (function () {
     if (key === 'ArrowRight') {
       e.preventDefault();
       if (boxes.length > 0) {
-        var next = selectedIdx >= boxes.length - 1 ? 0 : selectedIdx + 1;
+        const next = selectedIdx >= boxes.length - 1 ? 0 : selectedIdx + 1;
         selectBox(next);
       }
       return;
@@ -670,9 +668,9 @@ var bboxEditor = (function () {
       return;
     }
 
-    var box = boxes[selectedIdx];
-    var snap = dragBoxSnapshot;
-    var hid = dragHandle.id;
+    const box = boxes[selectedIdx];
+    const snap = dragBoxSnapshot;
+    const hid = dragHandle.id;
 
     // Reset from snapshot
     box.x1 = snap.x1;
@@ -706,13 +704,13 @@ var bboxEditor = (function () {
       return;
     }
 
-    var box = boxes[selectedIdx];
-    var snap = dragBoxSnapshot;
-    var w = snap.x2 - snap.x1;
-    var h = snap.y2 - snap.y1;
+    const box = boxes[selectedIdx];
+    const snap = dragBoxSnapshot;
+    const w = snap.x2 - snap.x1;
+    const h = snap.y2 - snap.y1;
 
-    var newX1 = snap.x1 + dx;
-    var newY1 = snap.y1 + dy;
+    let newX1 = snap.x1 + dx;
+    let newY1 = snap.y1 + dy;
 
     // Clamp to image bounds
     if (newX1 < 0) {
@@ -742,11 +740,11 @@ var bboxEditor = (function () {
       return;
     }
 
-    var b = boxes[idx];
-    var nx1 = Math.min(b.x1, b.x2);
-    var ny1 = Math.min(b.y1, b.y2);
-    var nx2 = Math.max(b.x1, b.x2);
-    var ny2 = Math.max(b.y1, b.y2);
+    const b = boxes[idx];
+    const nx1 = Math.min(b.x1, b.x2);
+    const ny1 = Math.min(b.y1, b.y2);
+    const nx2 = Math.max(b.x1, b.x2);
+    const ny2 = Math.max(b.y1, b.y2);
 
     boxes[idx] = {
       x1: nx1,
@@ -779,14 +777,14 @@ var bboxEditor = (function () {
 
     // Check handle hover
     if (cx >= 0 && cy >= 0) {
-      var handle = hitTestHandle(cx, cy);
+      const handle = hitTestHandle(cx, cy);
       if (handle) {
         canvas.style.cursor = handle.cursor;
         return;
       }
 
       // Check box hover
-      var hitIdx = hitTestBox(cx, cy);
+      const hitIdx = hitTestBox(cx, cy);
       if (hitIdx >= 0) {
         canvas.style.cursor = 'move';
         return;
@@ -805,21 +803,21 @@ var bboxEditor = (function () {
       return;
     }
 
-    var parent = canvas.parentElement;
+    const parent = canvas.parentElement;
     if (!parent) {
       return;
     }
 
-    var rect = parent.getBoundingClientRect();
-    var cx = rect.width / 2;
-    var cy = rect.height / 2;
+    const rect = parent.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
 
-    var newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale * factor));
+    const newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale * factor));
     if (newScale === scale) {
       return;
     }
 
-    var imgPoint = canvasToImg(cx, cy);
+    const imgPoint = canvasToImg(cx, cy);
     scale = newScale;
     offsetX = cx - imgPoint.x * scale;
     offsetY = cy - imgPoint.y * scale;
@@ -843,7 +841,7 @@ var bboxEditor = (function () {
   }
 
   function addBox(x1, y1, x2, y2) {
-    var newBox = {
+    const newBox = {
       x1: x1,
       y1: y1,
       x2: x2,
@@ -894,18 +892,18 @@ var bboxEditor = (function () {
   }
 
   function highlightSidebarItem(idx) {
-    var bboxList = document.getElementById('bbox-list');
+    const bboxList = document.getElementById('bbox-list');
     if (!bboxList) {
       return;
     }
 
-    var items = bboxList.querySelectorAll('.bbox-list__item');
+    const items = bboxList.querySelectorAll('.bbox-list__item');
     items.forEach(function (item) {
       item.classList.remove('bbox-list__item--selected');
     });
 
     if (idx >= 0) {
-      var target = bboxList.querySelector('[data-index="' + idx + '"]');
+      const target = bboxList.querySelector('[data-index="' + idx + '"]');
       if (target) {
         target.classList.add('bbox-list__item--selected');
       }
@@ -943,14 +941,14 @@ var bboxEditor = (function () {
     mode = newMode;
 
     // Update toolbar button active state
-    var toolbar = document.getElementById('bbox-toolbar');
+    const toolbar = document.getElementById('bbox-toolbar');
     if (!toolbar) {
       return;
     }
 
-    var buttons = toolbar.querySelectorAll('.bbox-toolbar__btn');
+    const buttons = toolbar.querySelectorAll('.bbox-toolbar__btn');
     buttons.forEach(function (btn) {
-      var tool = btn.getAttribute('data-tool');
+      const tool = btn.getAttribute('data-tool');
       if (tool === 'draw' || tool === 'select') {
         if (tool === newMode) {
           btn.classList.add('bbox-toolbar__btn--active');
@@ -971,18 +969,18 @@ var bboxEditor = (function () {
   }
 
   function initToolbar() {
-    var toolbar = document.getElementById('bbox-toolbar');
+    const toolbar = document.getElementById('bbox-toolbar');
     if (!toolbar) {
       return;
     }
 
     toolbar.addEventListener('click', function (e) {
-      var btn = e.target.closest('.bbox-toolbar__btn');
+      const btn = e.target.closest('.bbox-toolbar__btn');
       if (!btn) {
         return;
       }
 
-      var tool = btn.getAttribute('data-tool');
+      const tool = btn.getAttribute('data-tool');
       if (!tool) {
         return;
       }
@@ -1084,7 +1082,7 @@ var bboxEditor = (function () {
     // Convert incoming detections to internal format
     if (Array.isArray(detectionsList)) {
       boxes = detectionsList.map(function (det) {
-        var bbox = det.bbox || [0, 0, 0, 0];
+        const bbox = det.bbox || [0, 0, 0, 0];
         return {
           x1: bbox[0],
           y1: bbox[1],

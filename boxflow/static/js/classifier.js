@@ -19,31 +19,29 @@
  * Exports global: classifier
  */
 
-/* eslint-disable no-var */
-
-var classifier = (function () {
+const classifier = (function () {
 
   /* ================================================================
      Constants
      ================================================================ */
 
-  var FADE_DURATION_MS = 200;
-  var SPECIAL_BRANDS = [
-    { name: 'unknown', display: 'Unknown', cssClass: 'brand-card--unknown' },
-    { name: 'not_product', display: 'Not an Object', cssClass: 'brand-card--not-product' },
+  const FADE_DURATION_MS = 200;
+  const SPECIAL_BRANDS = [
+    { name: 'unknown', display: 'Unknown', cssClass: 'category-card--unknown' },
+    { name: 'not_product', display: 'Not an Object', cssClass: 'category-card--not-product' },
   ];
 
   /* ================================================================
      State
      ================================================================ */
 
-  var imageId = null;
-  var crops = [];       // [{bbox: [x1,y1,x2,y2], confidence, cropUrl}]
-  var brands = [];      // [{name, dir_name, icon_url}]
-  var labels = [];      // [{bbox: [x1,y1,x2,y2], brand: string|null}]
-  var currentIdx = 0;
-  var isSummaryView = false;
-  var boundKeyHandler = null;
+  let imageId = null;
+  let crops = [];       // [{bbox: [x1,y1,x2,y2], confidence, cropUrl}]
+  let brands = [];      // [{name, dir_name, icon_url}]
+  let labels = [];      // [{bbox: [x1,y1,x2,y2], brand: string|null}]
+  let currentIdx = 0;
+  let isSummaryView = false;
+  let boundKeyHandler = null;
 
   /* ================================================================
      DOM references
@@ -57,8 +55,8 @@ var classifier = (function () {
     return document.getElementById('crop-counter');
   }
 
-  function getBrandGrid() {
-    return document.getElementById('brand-grid');
+  function getCategoryGrid() {
+    return document.getElementById('category-grid');
   }
 
   function getSaveButton() {
@@ -75,9 +73,9 @@ var classifier = (function () {
     isSummaryView = false;
 
     // Build crops from boxes
-    var validBoxes = Array.isArray(boxes) ? boxes : [];
+    const validBoxes = Array.isArray(boxes) ? boxes : [];
     crops = validBoxes.map(function (box) {
-      var bbox = box.bbox || [0, 0, 0, 0];
+      const bbox = box.bbox || [0, 0, 0, 0];
       return {
         bbox: bbox,
         confidence: typeof box.confidence === 'number' ? box.confidence : 1.0,
@@ -122,11 +120,11 @@ var classifier = (function () {
      Auto-Classification
      ================================================================ */
 
-  var clipSuggestions = []; // [{bbox, brand, confidence}]
+  let clipSuggestions = []; // [{bbox, brand, confidence}]
 
   async function fetchClassifySuggestions(imgId, boxes) {
     try {
-      var body = {
+      const body = {
         boxes: boxes.map(function (b) {
           return {
             bbox: b.bbox || [0, 0, 0, 0],
@@ -135,7 +133,7 @@ var classifier = (function () {
         }),
       };
 
-      var response = await fetch('/api/classify/' + encodeURIComponent(imgId), {
+      const response = await fetch('/api/classify/' + encodeURIComponent(imgId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -145,7 +143,7 @@ var classifier = (function () {
         return;
       }
 
-      var data = await response.json();
+      const data = await response.json();
       if (data.status !== 'ok' || !data.suggestions || data.suggestions.length === 0) {
         return;
       }
@@ -154,8 +152,8 @@ var classifier = (function () {
 
       // Apply suggestions as pre-selected labels (only for unlabeled crops)
       // Validate category names against known categories to prevent mismatches
-      var knownNames = brands.map(function (b) { return b.name; });
-      var appliedCount = 0;
+      const knownNames = brands.map(function (b) { return b.name; });
+      let appliedCount = 0;
       clipSuggestions.forEach(function (suggestion, idx) {
         if (idx < labels.length && labels[idx].brand === null
             && suggestion.confidence > 0.3
@@ -177,7 +175,7 @@ var classifier = (function () {
         highlightSelectedBrand();
 
         // If all labeled, show summary
-        var allDone = labels.every(function (l) { return l.brand !== null; });
+        const allDone = labels.every(function (l) { return l.brand !== null; });
         if (allDone) {
           showSummary();
         }
@@ -192,14 +190,14 @@ var classifier = (function () {
      ================================================================ */
 
   async function fetchCategories() {
-    var response = await fetch('/api/categories');
+    const response = await fetch('/api/categories');
 
     if (!response.ok) {
-      var errData = await response.json().catch(function () { return {}; });
+      const errData = await response.json().catch(function () { return {}; });
       throw new Error(errData.detail || 'HTTP ' + response.status);
     }
 
-    var data = await response.json();
+    const data = await response.json();
     return sortCategories(data);
   }
 
@@ -208,7 +206,7 @@ var classifier = (function () {
    * Special entries (unknown, not_product) are appended by renderBrands().
    */
   function sortCategories(categoryList) {
-    var sorted = categoryList.slice();
+    const sorted = categoryList.slice();
     sorted.sort(function (a, b) {
       return a.name.localeCompare(b.name);
     });
@@ -228,13 +226,13 @@ var classifier = (function () {
      ================================================================ */
 
   function renderCropStrip() {
-    var display = getCropDisplay();
+    const display = getCropDisplay();
     if (!display) {
       return;
     }
 
     // Remove any existing strip
-    var existingStrip = display.parentElement.querySelector('.crop-strip');
+    const existingStrip = display.parentElement.querySelector('.crop-strip');
     if (existingStrip) {
       existingStrip.parentElement.removeChild(existingStrip);
     }
@@ -243,11 +241,11 @@ var classifier = (function () {
       return;
     }
 
-    var strip = document.createElement('div');
+    const strip = document.createElement('div');
     strip.className = 'crop-strip';
 
     crops.forEach(function (crop, idx) {
-      var thumb = document.createElement('div');
+      const thumb = document.createElement('div');
       thumb.className = 'crop-strip__item';
       if (idx === currentIdx) {
         thumb.classList.add('crop-strip__item--active');
@@ -258,13 +256,13 @@ var classifier = (function () {
         thumb.classList.add('crop-strip__item--done');
       }
 
-      var img = document.createElement('img');
+      const img = document.createElement('img');
       img.src = crop.cropUrl;
       img.alt = 'Region ' + (idx + 1);
       img.loading = 'lazy';
       thumb.appendChild(img);
 
-      var number = document.createElement('span');
+      const number = document.createElement('span');
       number.className = 'crop-strip__number';
       number.textContent = String(idx + 1);
       thumb.appendChild(number);
@@ -298,8 +296,8 @@ var classifier = (function () {
      ================================================================ */
 
   function renderCrop() {
-    var display = getCropDisplay();
-    var counter = getCropCounter();
+    const display = getCropDisplay();
+    const counter = getCropCounter();
 
     if (!display) {
       return;
@@ -317,7 +315,7 @@ var classifier = (function () {
     }
 
     // Create crop image with fade-in
-    var img = document.createElement('img');
+    const img = document.createElement('img');
     img.src = crops[currentIdx].cropUrl;
     img.alt = 'Region ' + (currentIdx + 1);
     img.className = 'crop-display__image crop-display__image--fade-in';
@@ -330,16 +328,16 @@ var classifier = (function () {
   }
 
   function renderEmptyCrops() {
-    var display = getCropDisplay();
-    var counter = getCropCounter();
+    const display = getCropDisplay();
+    const counter = getCropCounter();
 
     if (display) {
       clearChildren(display);
 
-      var placeholder = document.createElement('div');
+      const placeholder = document.createElement('div');
       placeholder.className = 'crop-display__placeholder';
 
-      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', '0 0 24 24');
       svg.setAttribute('width', '48');
       svg.setAttribute('height', '48');
@@ -347,7 +345,7 @@ var classifier = (function () {
       svg.setAttribute('stroke', 'currentColor');
       svg.setAttribute('stroke-width', '1.5');
 
-      var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', '3');
       rect.setAttribute('y', '3');
       rect.setAttribute('width', '18');
@@ -357,7 +355,7 @@ var classifier = (function () {
 
       placeholder.appendChild(svg);
 
-      var msg = document.createElement('p');
+      const msg = document.createElement('p');
       msg.textContent = 'No regions to classify';
       placeholder.appendChild(msg);
 
@@ -374,7 +372,7 @@ var classifier = (function () {
      ================================================================ */
 
   function renderBrands() {
-    var grid = getBrandGrid();
+    const grid = getCategoryGrid();
     if (!grid) {
       return;
     }
@@ -383,26 +381,26 @@ var classifier = (function () {
 
     // Render catalog categories
     brands.forEach(function (brand, idx) {
-      var btn = createBrandButton(brand.name, brand.name, brand.icon_url, idx);
+      const btn = createBrandButton(brand.name, brand.name, brand.icon_url, idx);
       grid.appendChild(btn);
     });
 
     // Render special category buttons at end
     SPECIAL_BRANDS.forEach(function (special, sIdx) {
-      var btn = document.createElement('button');
-      btn.className = 'brand-card ' + special.cssClass;
+      const btn = document.createElement('button');
+      btn.className = 'category-card ' + special.cssClass;
       btn.setAttribute('data-brand', special.name);
 
-      var nameSpan = document.createElement('span');
-      nameSpan.className = 'brand-card__name';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'category-card__name';
       nameSpan.textContent = special.display;
       btn.appendChild(nameSpan);
 
       // Hotkey number for special categories (continues from catalog)
-      var hotkeyNum = brands.length + sIdx + 1;
+      const hotkeyNum = brands.length + sIdx + 1;
       if (hotkeyNum <= 9) {
-        var hotkeySpan = document.createElement('span');
-        hotkeySpan.className = 'brand-card__hotkey';
+        const hotkeySpan = document.createElement('span');
+        hotkeySpan.className = 'category-card__hotkey';
         hotkeySpan.textContent = String(hotkeyNum);
         btn.appendChild(hotkeySpan);
       }
@@ -415,17 +413,17 @@ var classifier = (function () {
     });
 
     // Add custom category button
-    var addBtn = document.createElement('button');
-    addBtn.className = 'brand-card brand-card--add-new';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'category-card category-card--add-new';
     addBtn.setAttribute('data-brand', '__add_new__');
 
-    var addIcon = document.createElement('span');
-    addIcon.className = 'brand-card__add-icon';
+    const addIcon = document.createElement('span');
+    addIcon.className = 'category-card__add-icon';
     addIcon.textContent = '+';
     addBtn.appendChild(addIcon);
 
-    var addLabel = document.createElement('span');
-    addLabel.className = 'brand-card__name';
+    const addLabel = document.createElement('span');
+    addLabel.className = 'category-card__name';
     addLabel.textContent = 'New Category';
     addBtn.appendChild(addLabel);
 
@@ -441,27 +439,27 @@ var classifier = (function () {
    */
   function showCustomBrandInput(grid, addBtn) {
     // Replace the add button with an input form
-    var inputWrap = document.createElement('div');
-    inputWrap.className = 'brand-card brand-card--input-wrap';
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'category-card category-card--input-wrap';
 
-    var input = document.createElement('input');
-    input.className = 'brand-card__input';
+    const input = document.createElement('input');
+    input.className = 'category-card__input';
     input.type = 'text';
     input.placeholder = 'Category name...';
     input.maxLength = 50;
     inputWrap.appendChild(input);
 
-    var btnRow = document.createElement('div');
-    btnRow.className = 'brand-card__input-actions';
+    const btnRow = document.createElement('div');
+    btnRow.className = 'category-card__input-actions';
 
-    var confirmBtn = document.createElement('button');
-    confirmBtn.className = 'brand-card__input-ok';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'category-card__input-ok';
     confirmBtn.textContent = '\u2713';
     confirmBtn.title = 'Add';
     btnRow.appendChild(confirmBtn);
 
-    var cancelBtn = document.createElement('button');
-    cancelBtn.className = 'brand-card__input-cancel';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'category-card__input-cancel';
     cancelBtn.textContent = '\u2717';
     cancelBtn.title = 'Cancel';
     btnRow.appendChild(cancelBtn);
@@ -472,7 +470,7 @@ var classifier = (function () {
     input.focus();
 
     function submitNewBrand() {
-      var name = input.value.trim();
+      const name = input.value.trim();
       if (!name) {
         cancelInput();
         return;
@@ -502,18 +500,18 @@ var classifier = (function () {
    */
   async function createCustomCategory(name, grid) {
     try {
-      var response = await fetch('/api/categories', {
+      const response = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name }),
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'HTTP ' + response.status);
       }
 
-      var data = await response.json();
+      const data = await response.json();
 
       // Add to local categories array
       brands.push({
@@ -537,14 +535,14 @@ var classifier = (function () {
   }
 
   function createBrandButton(brandName, displayName, iconUrl, idx) {
-    var btn = document.createElement('button');
-    btn.className = 'brand-card';
+    const btn = document.createElement('button');
+    btn.className = 'category-card';
     btn.setAttribute('data-brand', brandName);
 
     // Category icon (if available)
     if (iconUrl) {
-      var icon = document.createElement('img');
-      icon.className = 'brand-card__icon';
+      const icon = document.createElement('img');
+      icon.className = 'category-card__icon';
       icon.src = iconUrl;
       icon.alt = displayName;
       icon.loading = 'lazy';
@@ -555,16 +553,16 @@ var classifier = (function () {
       btn.appendChild(icon);
     }
 
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'brand-card__name';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'category-card__name';
     nameSpan.textContent = displayName;
     btn.appendChild(nameSpan);
 
     // Hotkey indicator (1-9)
-    var hotkeyNum = idx + 1;
+    const hotkeyNum = idx + 1;
     if (hotkeyNum <= 9) {
-      var hotkeySpan = document.createElement('span');
-      hotkeySpan.className = 'brand-card__hotkey';
+      const hotkeySpan = document.createElement('span');
+      hotkeySpan.className = 'category-card__hotkey';
       hotkeySpan.textContent = String(hotkeyNum);
       btn.appendChild(hotkeySpan);
     }
@@ -577,23 +575,23 @@ var classifier = (function () {
   }
 
   function highlightSelectedBrand() {
-    var grid = getBrandGrid();
+    const grid = getCategoryGrid();
     if (!grid) {
       return;
     }
 
     // Remove all selected highlights
-    var cards = grid.querySelectorAll('.brand-card');
+    const cards = grid.querySelectorAll('.category-card');
     cards.forEach(function (card) {
-      card.classList.remove('brand-card--selected');
+      card.classList.remove('category-card--selected');
     });
 
     // If current crop has a label, highlight that category
     if (currentIdx >= 0 && currentIdx < labels.length && labels[currentIdx].brand !== null) {
-      var brandName = labels[currentIdx].brand;
-      var matchCard = grid.querySelector('[data-brand="' + CSS.escape(brandName) + '"]');
+      const brandName = labels[currentIdx].brand;
+      const matchCard = grid.querySelector('[data-brand="' + CSS.escape(brandName) + '"]');
       if (matchCard) {
-        matchCard.classList.add('brand-card--selected');
+        matchCard.classList.add('category-card--selected');
       }
     }
   }
@@ -624,7 +622,7 @@ var classifier = (function () {
     renderCropStrip();
 
     // Auto-advance after a short delay for visual feedback
-    var nextIdx = currentIdx + 1;
+    const nextIdx = currentIdx + 1;
 
     if (nextIdx >= crops.length) {
       // All crops labeled -- show summary
@@ -643,14 +641,14 @@ var classifier = (function () {
   }
 
   function renderCropWithFade() {
-    var display = getCropDisplay();
+    const display = getCropDisplay();
     if (!display) {
       renderCrop();
       return;
     }
 
     // Fade out current content
-    var currentImg = display.querySelector('.crop-display__image');
+    const currentImg = display.querySelector('.crop-display__image');
     if (currentImg) {
       currentImg.classList.add('crop-display__image--fade-out');
       currentImg.addEventListener('animationend', function () {
@@ -667,8 +665,8 @@ var classifier = (function () {
 
   function showSummary() {
     isSummaryView = true;
-    var display = getCropDisplay();
-    var counter = getCropCounter();
+    const display = getCropDisplay();
+    const counter = getCropCounter();
 
     if (!display) {
       return;
@@ -682,28 +680,28 @@ var classifier = (function () {
     display.classList.add('crop-display--summary');
 
     // Summary grid
-    var summaryGrid = document.createElement('div');
+    const summaryGrid = document.createElement('div');
     summaryGrid.className = 'summary-grid';
 
     labels.forEach(function (label, idx) {
-      var card = document.createElement('div');
+      const card = document.createElement('div');
       card.className = 'summary-card';
 
       // Crop thumbnail
-      var thumb = document.createElement('img');
+      const thumb = document.createElement('img');
       thumb.className = 'summary-card__thumb';
       thumb.src = crops[idx].cropUrl;
       thumb.alt = 'Region ' + (idx + 1);
       card.appendChild(thumb);
 
       // Category label
-      var brandText = document.createElement('span');
+      const brandText = document.createElement('span');
       brandText.className = 'summary-card__brand';
       brandText.textContent = getBrandDisplayName(label.brand);
       card.appendChild(brandText);
 
       // Index number
-      var numSpan = document.createElement('span');
+      const numSpan = document.createElement('span');
       numSpan.className = 'summary-card__number';
       numSpan.textContent = String(idx + 1);
       card.appendChild(numSpan);
@@ -737,7 +735,7 @@ var classifier = (function () {
     }
 
     // Check special categories
-    for (var i = 0; i < SPECIAL_BRANDS.length; i++) {
+    for (let i = 0; i < SPECIAL_BRANDS.length; i++) {
       if (SPECIAL_BRANDS[i].name === brandName) {
         return SPECIAL_BRANDS[i].display;
       }
@@ -755,7 +753,7 @@ var classifier = (function () {
      ================================================================ */
 
   function updateSaveButton(enabled) {
-    var btn = getSaveButton();
+    const btn = getSaveButton();
     if (!btn) {
       return;
     }
@@ -764,7 +762,7 @@ var classifier = (function () {
 
     // Remove old click handler and rebind
     btn.replaceWith(btn.cloneNode(true));
-    var newBtn = getSaveButton();
+    const newBtn = getSaveButton();
     if (newBtn && enabled) {
       newBtn.disabled = false;
       newBtn.addEventListener('click', function () {
@@ -780,37 +778,37 @@ var classifier = (function () {
     }
 
     // Check that all crops are labeled
-    var unlabeled = labels.filter(function (l) { return l.brand === null; });
+    const unlabeled = labels.filter(function (l) { return l.brand === null; });
     if (unlabeled.length > 0) {
       window.showToast('Not all regions labeled (' + unlabeled.length + ' remaining)', 'warning');
       return;
     }
 
-    var saveBtn = getSaveButton();
+    const saveBtn = getSaveButton();
     if (saveBtn) {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving...';
     }
 
-    var body = {
+    const body = {
       boxes: labels.map(function (l) {
         return { bbox: l.bbox, label: l.brand };
       }),
     };
 
     try {
-      var response = await fetch('/api/save/' + encodeURIComponent(imageId), {
+      const response = await fetch('/api/save/' + encodeURIComponent(imageId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
       if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
+        const errData = await response.json().catch(function () { return {}; });
         throw new Error(errData.detail || 'HTTP ' + response.status);
       }
 
-      var data = await response.json();
+      const data = await response.json();
 
       window.showToast(
         'Labels saved: ' + data.crops_count + ' regions',
@@ -848,7 +846,7 @@ var classifier = (function () {
     }
 
     // Ignore if not on the classify step
-    var classifySection = document.getElementById('step-classify');
+    const classifySection = document.getElementById('step-classify');
     if (!classifySection || !classifySection.classList.contains('step--active')) {
       return;
     }
@@ -862,16 +860,16 @@ var classifier = (function () {
       return;
     }
 
-    var key = e.key;
+    const key = e.key;
 
     // Number keys 1-9: select category by index
-    var num = parseInt(key, 10);
+    const num = parseInt(key, 10);
     if (num >= 1 && num <= 9) {
       e.preventDefault();
-      var allBrands = brands.concat(
+      const allBrands = brands.concat(
         SPECIAL_BRANDS.map(function (s) { return { name: s.name }; })
       );
-      var brandIdx = num - 1;
+      const brandIdx = num - 1;
       if (brandIdx < allBrands.length) {
         selectBrand(allBrands[brandIdx].name);
       }
@@ -917,10 +915,10 @@ var classifier = (function () {
     unbindKeyboard();
 
     // Remove crop strip
-    var display = getCropDisplay();
+    const display = getCropDisplay();
     if (display) {
       display.classList.remove('crop-display--summary');
-      var strip = display.parentElement
+      const strip = display.parentElement
         ? display.parentElement.querySelector('.crop-strip')
         : null;
       if (strip) {
