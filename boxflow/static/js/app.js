@@ -189,7 +189,7 @@ function goToStep(step) {
 }
 
 function initBboxStep() {
-  var imageUrl = '/api/image/' + encodeURIComponent(currentImageId);
+  var imageUrl = '/api/images/' + encodeURIComponent(currentImageId);
 
   // bboxEditor is defined in bbox-editor.js (loaded after app.js)
   if (typeof bboxEditor !== 'undefined' && bboxEditor.init) {
@@ -426,7 +426,7 @@ function showPreview(imageId, filename) {
 
   clearChildren(dropZone);
 
-  var imageUrl = '/api/image/' + encodeURIComponent(imageId);
+  var imageUrl = '/api/images/' + encodeURIComponent(imageId);
   var displayName = filename || imageId;
 
   // Preview image

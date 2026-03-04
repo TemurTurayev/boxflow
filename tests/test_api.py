@@ -70,7 +70,7 @@ class TestImageEndpoint:
         assert response.headers["content-type"] == "image/jpeg"
 
     def test_get_missing_image_returns_404(self, client: TestClient) -> None:
-        response = client.get("/api/images/nonexistent")
+        response = client.get("/api/images/deadbeef0000")
         assert response.status_code == 404
 
 
@@ -95,7 +95,7 @@ class TestCategoriesEndpoint:
             "/api/categories",
             json={"name": "  "},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
 
 
 class TestQueueEndpoint:

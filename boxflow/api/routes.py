@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile
@@ -27,26 +28,56 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["labeling"])
 
+_IMAGE_ID_RE = re.compile(r"^[a-f0-9]{1,32}$")
+
 
 def _get_service(request: Request) -> LabelerService:
     return request.app.state.service
+
+
+def _validate_image_id(image_id: str) -> None:
+    """Reject image_id values that do not look like hex UUIDs."""
+    if not _IMAGE_ID_RE.match(image_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image ID format",
+        )
+
+
+_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif"}
 
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_image(request: Request, file: UploadFile) -> UploadResponse:
     """Upload an image for labeling."""
     service = _get_service(request)
-    content = await file.read()
-
-    max_bytes = request.app.state.settings.max_upload_bytes
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds maximum upload size of "
-            f"{request.app.state.settings.max_upload_size_mb}MB",
-        )
 
     filename = file.filename or "image.jpg"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if f".{ext}" not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '.{ext}'. "
+            f"Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
+        )
+
+    max_bytes = request.app.state.settings.max_upload_bytes
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 256)  # 256 KB chunks
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum upload size of "
+                f"{request.app.state.settings.max_upload_size_mb}MB",
+            )
+        chunks = [*chunks, chunk]
+    content = b"".join(chunks)
+
     result = await asyncio.to_thread(service.upload_image, filename, content)
     return UploadResponse(**result)
 
@@ -54,6 +85,7 @@ async def upload_image(request: Request, file: UploadFile) -> UploadResponse:
 @router.post("/detect/{image_id}", response_model=DetectResponse)
 async def detect_objects(request: Request, image_id: str) -> DetectResponse:
     """Run object detection on an uploaded image."""
+    _validate_image_id(image_id)
     service = _get_service(request)
     try:
         result = await asyncio.to_thread(service.detect, image_id)
@@ -71,6 +103,7 @@ async def detect_objects(request: Request, image_id: str) -> DetectResponse:
 @router.get("/images/{image_id}")
 async def get_image(request: Request, image_id: str) -> StreamingResponse:
     """Serve an uploaded image by ID."""
+    _validate_image_id(image_id)
     service = _get_service(request)
     path = service.get_image_path(image_id)
     if path is None:
@@ -100,6 +133,11 @@ async def crop_image(
     y2: float,
 ) -> StreamingResponse:
     """Return a cropped region of an image."""
+    _validate_image_id(image_id)
+    if x1 < 0 or y1 < 0 or x2 < 0 or y2 < 0:
+        raise HTTPException(status_code=400, detail="Crop coordinates must be non-negative")
+    if x2 <= x1 or y2 <= y1:
+        raise HTTPException(status_code=400, detail="Invalid crop region: x2 must be > x1 and y2 must be > y1")
     service = _get_service(request)
     try:
         crop = await asyncio.to_thread(
@@ -119,6 +157,7 @@ async def save_labels(
     request: Request, image_id: str, body: SaveRequest
 ) -> SaveResponse:
     """Save labels for an image."""
+    _validate_image_id(image_id)
     service = _get_service(request)
     boxes_dicts = [
         {"bbox": tuple(box.bbox), "label": box.label} for box in body.boxes
@@ -140,6 +179,7 @@ async def classify_crops(
     request: Request, image_id: str, body: ClassifyRequest
 ) -> ClassifyResponse:
     """Classify detected objects against known categories."""
+    _validate_image_id(image_id)
     service = _get_service(request)
     boxes_dicts = [
         {"bbox": tuple(b.bbox), "confidence": b.confidence} for b in body.boxes

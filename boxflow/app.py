@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from boxflow import __version__
 from boxflow.api.export_routes import router as export_router
@@ -17,6 +20,8 @@ from boxflow.core.storage import Storage
 from boxflow.providers.registry import get_classifier, get_detector
 
 logger = logging.getLogger(__name__)
+
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 def create_app() -> FastAPI:
@@ -101,10 +106,21 @@ def _add_cors(app: FastAPI, settings: Settings) -> None:
 
 
 def _include_routers(app: FastAPI) -> None:
-    """Register all API routers."""
+    """Register all API routers and mount static files.
+
+    API routes are registered first so they take priority over the
+    catch-all static file mount.
+    """
     app.include_router(labeling_router)
     app.include_router(export_router)
     app.include_router(settings_router)
+
+    @app.get("/", include_in_schema=False)
+    async def _root_redirect():
+        return RedirectResponse(url="/static/index.html")
+
+    if _STATIC_DIR.is_dir():
+        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
 class _FallbackDetector:

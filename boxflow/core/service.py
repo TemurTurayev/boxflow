@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shutil
 import uuid
 from datetime import datetime, timezone
@@ -17,6 +18,9 @@ from boxflow.core.storage import Storage
 from boxflow.providers.base import ClassifierProvider, DetectionProvider
 
 logger = logging.getLogger(__name__)
+
+_SAFE_LABEL_RE = re.compile(r"^[\w\s.\-]+$", re.UNICODE)
+_ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif"}
 
 
 class LabelerService:
@@ -50,7 +54,9 @@ class LabelerService:
     def upload_image(self, filename: str, content: bytes) -> dict[str, Any]:
         """Save an uploaded image and return its metadata."""
         image_id = uuid.uuid4().hex[:12]
-        suffix = Path(filename).suffix or ".jpg"
+        suffix = Path(filename).suffix.lower() or ".jpg"
+        if suffix not in _ALLOWED_IMAGE_SUFFIXES:
+            suffix = ".jpg"
         dest = self._storage.uploads_dir / f"{image_id}{suffix}"
         dest.write_bytes(content)
 
@@ -228,6 +234,12 @@ class LabelerService:
         created_files.append(label_path)
         return label_path
 
+    @staticmethod
+    def _validate_label_safe(label: str) -> None:
+        """Defense-in-depth: reject labels that could escape the crops tree."""
+        if not label or not _SAFE_LABEL_RE.match(label) or ".." in label:
+            raise ValueError(f"Unsafe label rejected: {label!r}")
+
     def _save_crops(
         self,
         image_id: str,
@@ -241,10 +253,13 @@ class LabelerService:
         with Image.open(image_path) as img:
             for idx, box in enumerate(boxes):
                 label = box["label"]
+                self._validate_label_safe(label)
                 x1, y1, x2, y2 = box["bbox"]
                 crop = img.crop((int(x1), int(y1), int(x2), int(y2)))
 
                 cat_dir = self._storage.crops_dir / label
+                if not self._storage._is_within(cat_dir, self._storage.crops_dir):
+                    raise ValueError(f"Category directory escapes data tree: {label!r}")
                 if not cat_dir.exists():
                     cat_dir.mkdir(parents=True, exist_ok=True)
                     created_dirs.append(cat_dir)
@@ -366,6 +381,11 @@ class LabelerService:
 
     def create_category(self, name: str) -> dict[str, Any]:
         """Register a new category."""
+        self._validate_label_safe(name)
+        cat_dir = self._storage.crops_dir / name
+        if not self._storage._is_within(cat_dir, self._storage.crops_dir):
+            raise ValueError(f"Category name escapes data tree: {name!r}")
+
         cat_map = self._load_categories_json()
         if name in cat_map:
             return {"name": name, "count": 0, "icon_url": "", "created": False}
@@ -374,7 +394,6 @@ class LabelerService:
         new_map = {**cat_map, name: next_id}
         self._save_categories_json(new_map)
 
-        cat_dir = self._storage.crops_dir / name
         cat_dir.mkdir(parents=True, exist_ok=True)
 
         return {"name": name, "count": 0, "icon_url": "", "created": True}

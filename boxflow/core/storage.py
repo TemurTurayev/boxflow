@@ -76,21 +76,39 @@ class Storage:
             directory.mkdir(parents=True, exist_ok=True)
         logger.info("Data directories ensured at %s", self._root)
 
+    def _is_within(self, path: Path, parent: Path) -> bool:
+        """Verify that *path* is a child of *parent* (prevents traversal)."""
+        try:
+            path.resolve().relative_to(parent.resolve())
+            return True
+        except ValueError:
+            return False
+
     def resolve_image(self, image_id: str) -> Path | None:
         """Find an uploaded image by its ID (stem).
 
         Searches the uploads directory for any file whose stem matches
         *image_id*. Returns ``None`` if not found.
         """
+        if not self.uploads_dir.exists():
+            return None
         for candidate in self.uploads_dir.iterdir():
             if candidate.is_file() and candidate.stem == image_id:
+                if not self._is_within(candidate, self.uploads_dir):
+                    logger.warning("Path traversal blocked: %s", candidate)
+                    return None
                 return candidate
         return None
 
     def resolve_labeled_image(self, image_id: str) -> Path | None:
         """Find a labeled image by its ID (stem)."""
+        if not self.images_dir.exists():
+            return None
         for candidate in self.images_dir.iterdir():
             if candidate.is_file() and candidate.stem == image_id:
+                if not self._is_within(candidate, self.images_dir):
+                    logger.warning("Path traversal blocked: %s", candidate)
+                    return None
                 return candidate
         return None
 

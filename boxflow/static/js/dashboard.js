@@ -69,7 +69,7 @@
   async function fetchDashboardData() {
     try {
       var responses = await Promise.all([
-        fetch('/api/dashboard/stats'),
+        fetch('/api/stats'),
         fetch('/api/history'),
       ]);
 

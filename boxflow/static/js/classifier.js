@@ -128,7 +128,10 @@ var classifier = (function () {
     try {
       var body = {
         boxes: boxes.map(function (b) {
-          return { bbox: b.bbox || [0, 0, 0, 0], brand: '' };
+          return {
+            bbox: b.bbox || [0, 0, 0, 0],
+            confidence: typeof b.confidence === 'number' ? b.confidence : 1.0,
+          };
         }),
       };
 
@@ -156,10 +159,10 @@ var classifier = (function () {
       clipSuggestions.forEach(function (suggestion, idx) {
         if (idx < labels.length && labels[idx].brand === null
             && suggestion.confidence > 0.3
-            && knownNames.indexOf(suggestion.brand) !== -1) {
+            && knownNames.indexOf(suggestion.label) !== -1) {
           labels[idx] = {
             bbox: labels[idx].bbox.slice(),
-            brand: suggestion.brand,
+            brand: suggestion.label,
           };
           appliedCount++;
         }
@@ -791,7 +794,7 @@ var classifier = (function () {
 
     var body = {
       boxes: labels.map(function (l) {
-        return { bbox: l.bbox, brand: l.brand };
+        return { bbox: l.bbox, label: l.brand };
       }),
     };
 
