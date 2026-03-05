@@ -16,16 +16,21 @@ from boxflow.providers.base import (
 logger = logging.getLogger(__name__)
 
 _YOLO_MODELS: list[ModelSpec] = [
-    ModelSpec(name="yolov8n.pt", size_mb=6, description="YOLOv8 Nano — fastest"),
-    ModelSpec(name="yolov8s.pt", size_mb=22, description="YOLOv8 Small"),
-    ModelSpec(name="yolov8m.pt", size_mb=50, description="YOLOv8 Medium"),
-    ModelSpec(name="yolov8l.pt", size_mb=87, description="YOLOv8 Large"),
-    ModelSpec(name="yolov8x.pt", size_mb=130, description="YOLOv8 Extra-Large — most accurate"),
+    ModelSpec(name="yolo26n.pt", size_mb=5, description="YOLO26 Nano — fastest, NMS-free"),
+    ModelSpec(name="yolo26s.pt", size_mb=18, description="YOLO26 Small — NMS-free"),
+    ModelSpec(name="yolo26m.pt", size_mb=38, description="YOLO26 Medium — NMS-free"),
+    ModelSpec(name="yolo26l.pt", size_mb=68, description="YOLO26 Large — NMS-free"),
+    ModelSpec(name="yolo26x.pt", size_mb=120, description="YOLO26 Extra-Large — NMS-free, most accurate"),
     ModelSpec(name="yolo11n.pt", size_mb=5, description="YOLO11 Nano — fastest"),
     ModelSpec(name="yolo11s.pt", size_mb=18, description="YOLO11 Small"),
     ModelSpec(name="yolo11m.pt", size_mb=39, description="YOLO11 Medium"),
     ModelSpec(name="yolo11l.pt", size_mb=73, description="YOLO11 Large"),
     ModelSpec(name="yolo11x.pt", size_mb=110, description="YOLO11 Extra-Large — most accurate"),
+    ModelSpec(name="yolov8n.pt", size_mb=6, description="YOLOv8 Nano"),
+    ModelSpec(name="yolov8s.pt", size_mb=22, description="YOLOv8 Small"),
+    ModelSpec(name="yolov8m.pt", size_mb=50, description="YOLOv8 Medium"),
+    ModelSpec(name="yolov8l.pt", size_mb=87, description="YOLOv8 Large"),
+    ModelSpec(name="yolov8x.pt", size_mb=130, description="YOLOv8 Extra-Large"),
 ]
 
 
