@@ -116,7 +116,10 @@ class Storage:
         """Return all uploaded image files sorted by modification time."""
         if not self.uploads_dir.exists():
             return []
-        files = [f for f in self.uploads_dir.iterdir() if f.is_file()]
+        files = [
+            f for f in self.uploads_dir.iterdir()
+            if f.is_file() and not f.name.startswith(".")
+        ]
         return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
     def list_labeled(self) -> list[Path]:
