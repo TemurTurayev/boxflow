@@ -316,8 +316,8 @@ function initUpload() {
 
   // Clicking the drop zone opens the file dialog
   dropZone.addEventListener('click', function (e) {
-    // Don't trigger if the button itself was clicked (handled below)
-    if (e.target.closest('.drop-zone__btn')) {
+    // Don't trigger if any button was clicked (Detect, New Image, Browse, etc.)
+    if (e.target.closest('button')) {
       return;
     }
     fileInput.click();
